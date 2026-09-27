@@ -1,0 +1,12 @@
+[package]
+name = "bastion-lab"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+repository = "https://github.com/moritayasuaki/bastion"
+[dependencies]
+bastion-core = { path = "../.." }
+bastion-crypto = { path = "../../crypto" }
+tempfile = "3.15"
+libc = "0.2"

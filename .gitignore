@@ -1,0 +1,21 @@
+# Build outputs and local evidence
+/target/
+/boot/target/
+/proof/.lake/
+/dist/
+/work/
+/docs/validation-evidence.tar.gz
+/docs/boot-screen.png
+*.log
+*.pcap
+*.iso
+*.elf
+.DS_Store
+
+# Local credentials and private relay provisioning
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+relay.bin

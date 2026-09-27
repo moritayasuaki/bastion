@@ -1,0 +1,22 @@
+[package]
+name = "bastion-core"
+version = "0.1.0"
+edition = "2024"
+description = "An allocation-free process, resource, and capability policy core"
+publish = false
+license = "MIT"
+repository = "https://github.com/moritayasuaki/bastion"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+bastion-policy = { path = "policy" }
+bastion-crypto = { path = "crypto" }
+
+[profile.release]
+panic = "abort"
+
+[workspace]
+members = [".", "policy", "crypto", "tools/lab", "tools", "tools/integrity"]
+exclude = ["boot"]

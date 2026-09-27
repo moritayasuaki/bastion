@@ -1,0 +1,38 @@
+/* GENERATED scalar C API. */
+#pragma once
+#include <stdint.h>
+uint64_t bastion_abi_version(uint64_t v_x_1_);
+uint8_t bastion_valid_config(uint64_t v_period_7_, uint64_t v_quantum_8_);
+uint8_t bastion_valid_limits(uint64_t v_pageLimit_19_, uint64_t v_initialPages_20_, uint64_t v_capLimit_21_, uint64_t v_cpuBudget_22_, uint64_t v_period_23_);
+uint8_t bastion_can_reserve(uint64_t v_used_44_, uint64_t v_requested_45_, uint64_t v_limit_46_);
+uint64_t bastion_reservation_status(uint64_t v_owned_58_, uint64_t v_total_59_, uint64_t v_requested_60_, uint64_t v_processLimit_61_, uint64_t v_globalLimit_62_);
+uint64_t bastion_reserve_value(uint64_t v_used_80_, uint64_t v_requested_81_, uint64_t v_limit_82_);
+uint8_t bastion_can_release(uint64_t v_used_93_, uint64_t v_amount_94_);
+uint64_t bastion_release_value(uint64_t v_used_102_, uint64_t v_amount_103_);
+uint64_t bastion_next_identifier(uint64_t v_current_112_);
+uint8_t bastion_same_identity(uint64_t v_stored_125_, uint64_t v_requested_126_);
+uint8_t bastion_can_grant(uint64_t v_count_137_, uint64_t v_limit_138_);
+uint8_t bastion_rights_allow(uint64_t v_held_148_, uint64_t v_needed_149_);
+uint8_t bastion_authorized(uint64_t v_caller_163_, uint64_t v_owner_164_, uint64_t v_targetLive_165_, uint64_t v_held_166_, uint64_t v_needed_167_);
+uint64_t bastion_restrict_rights(uint64_t v_held_186_, uint64_t v_requested_187_);
+uint8_t bastion_revoke_target(uint64_t v_capTarget_196_, uint64_t v_removed_197_);
+uint64_t bastion_charge(uint64_t v_remaining_205_, uint64_t v_elapsed_206_);
+uint8_t bastion_clock_valid(uint64_t v_old_216_, uint64_t v_now_217_);
+uint64_t bastion_account(uint64_t v_remaining_225_, uint64_t v_budget_226_, uint64_t v_old_227_, uint64_t v_now_228_, uint64_t v_period_229_, uint64_t v_active_230_);
+uint8_t bastion_runnable(uint64_t v_alive_264_, uint64_t v_remaining_265_);
+uint64_t bastion_next_slot(uint64_t v_mask_291_, uint64_t v_cursor_292_);
+uint64_t bastion_next_cursor(uint64_t v_selected_347_);
+uint64_t bastion_deadline(uint64_t v_now_358_, uint64_t v_period_359_, uint64_t v_quantum_360_, uint64_t v_remaining_361_, uint64_t v_active_362_);
+uint8_t bastion_valid_user_return(uint64_t v_rip_391_, uint64_t v_rsp_392_);
+uint64_t bastion_user_flags(uint64_t v_flags_402_);
+uint64_t bastion_supervisor_entry(uint64_t v_entry_411_);
+uint64_t bastion_user_page_entry(uint64_t v_physical_418_, uint64_t v_kind_419_);
+uint64_t bastion_syscall_opcode(uint64_t v_raw_440_);
+uint8_t bastion_net_frame_len(uint64_t v_size_448_);
+uint8_t bastion_net_ipv4(uint64_t v_size_457_, uint64_t v_available_458_, uint64_t v_fragment_459_, uint64_t v_ttl_460_, uint64_t v_protocol_461_, uint64_t v_version_462_);
+uint8_t bastion_net_udp(uint64_t v_size_497_, uint64_t v_available_498_, uint64_t v_destination_499_, uint64_t v_bound_500_);
+uint8_t bastion_net_budget(uint64_t v_processed_523_);
+uint8_t bastion_relay_ingress(uint64_t v_relay_530_, uint64_t v_role_531_, uint64_t v_opcode_532_, uint64_t v_sequence_533_, uint64_t v_previous_534_, uint64_t v_size_535_);
+uint64_t bastion_field_share(uint64_t v_secret_580_, uint64_t v_a_581_, uint64_t v_b_582_, uint64_t v_c_583_, uint64_t v_x_584_);
+uint64_t bastion_field_reconstruct(uint64_t v_points_721_, uint64_t v_y0_722_, uint64_t v_y1_723_, uint64_t v_y2_724_, uint64_t v_y3_725_);
+uint64_t bastion_unique_step(uint64_t v_state_957_, uint64_t v_equal_958_, uint64_t v_confirmed_959_);

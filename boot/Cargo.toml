@@ -1,0 +1,22 @@
+[package]
+name = "bastion-boot"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+repository = "https://github.com/moritayasuaki/bastion"
+
+[dependencies]
+bastion-core = { path = ".." }
+
+[features]
+qemu-test = []
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = 2
+
+[workspace]

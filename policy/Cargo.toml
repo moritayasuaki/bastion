@@ -1,0 +1,15 @@
+[package]
+name = "bastion-policy"
+version = "0.2.0"
+edition = "2024"
+description = "Lean-generated kernel policy compiled as freestanding C"
+publish = false
+license = "MIT AND Apache-2.0"
+repository = "https://github.com/moritayasuaki/bastion"
+links = "bastion_lean_policy"
+
+[lib]
+path = "src/lib.rs"
+
+[build-dependencies]
+bastion-integrity = { path = "../tools/integrity" }
