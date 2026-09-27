@@ -146,4 +146,37 @@ theorem rejected_line_cannot_append (byte length discarding : UInt64)
 theorem console_poll_bounded (n : UInt64) (h : consoleBudget n = true) : n < 16 := by
   simpa [consoleBudget] using h
 
+theorem user_copy_bounded (p n b s : UInt64) (h : userBuffer p n b s = true) :
+    n ≤ 256 ∧ b ≤ p ∧ p - b ≤ s ∧ n ≤ s - (p - b) := by
+  unfold userBuffer at h
+  bv_decide
+
+theorem elf_no_writable_executable (a f m flags : UInt64)
+    (h : elfSegment a f m flags = true) : flags = 5 ∨ flags = 6 := by
+  unfold elfSegment at h
+  bv_decide
+
+theorem elf_file_within_memory (a f m flags : UInt64)
+    (h : elfSegment a f m flags = true) : f ≤ m := by
+  unfold elfSegment at h
+  bv_decide
+
+theorem arm_code_readonly (p : UInt64) (h : armPage p 1 ≠ 0) :
+    (armPage p 1 &&& 0x80) = 0x80 := by
+  unfold armPage bne at *
+  bv_decide
+
+theorem arm_data_nonexecutable (p : UInt64) (h : armPage p 2 ≠ 0) :
+    (armPage p 2 &&& 0x40000000000000) ≠ 0 := by
+  unfold armPage bne at *
+  bv_decide
+
+theorem riscv_code_readonly (p : UInt64) : (riscvPage p 1 &&& 4) = 0 := by
+  unfold riscvPage bne
+  bv_decide
+
+theorem riscv_data_nonexecutable (p : UInt64) : (riscvPage p 2 &&& 8) = 0 := by
+  unfold riscvPage bne
+  bv_decide
+
 end Bastion.Runtime

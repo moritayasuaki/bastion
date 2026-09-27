@@ -49,7 +49,9 @@ pub fn build(root: &Path, options: &Options) -> Result<()> {
         .into());
     }
     run(Command::new("make").arg("-C").arg(&limine))?;
+    let init = crate::portable::user(root, "x86_64-unknown-none")?;
     let test = options.flag("--test");
+
     let mut command = Command::new("cargo");
     command.args(["build", "--locked", "--release"]);
     if test {
@@ -57,6 +59,7 @@ pub fn build(root: &Path, options: &Options) -> Result<()> {
     }
     run(command
         .current_dir(root.join("boot"))
+        .env("BASTION_INIT", &init)
         .env("CARGO_TARGET_DIR", work.join("target")))?;
     let target = work.join("target/x86_64-unknown-none/release");
     let kernel = target.join("bastion-boot");
@@ -151,6 +154,7 @@ pub fn build(root: &Path, options: &Options) -> Result<()> {
 }
 
 pub fn check(root: &Path) -> Result<()> {
+    let init = crate::portable::user(root, "x86_64-unknown-none")?;
     let proof = root.join("proof");
     run(Command::new("lake").arg("build").current_dir(&proof))?;
     extract::extract(root, true)?;
@@ -201,7 +205,9 @@ pub fn check(root: &Path) -> Result<()> {
             "-D",
             "warnings",
         ])
+        .env("BASTION_INIT", init)
         .current_dir(root.join("boot")))?;
+    crate::portable::check(root)?;
     println!("All proof, conformance, unit-test, and static checks passed.");
     Ok(())
 }

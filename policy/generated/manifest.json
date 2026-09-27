@@ -1,8 +1,8 @@
 {
   "lean_version": "4.32.1",
-  "source_sha256": "157efb1c4e6e6fcb6c4045c842e5097e18f971d216b4702644f803f156a8d3a4",
-  "full_c_sha256": "f2eee8cca7c30ee00df7cbee752b11ca92604f6a462dc1155f035e8b018d60f3",
-  "freestanding_c_sha256": "20df1714facb7b54fb8a1602e812d37ea928f84ce6ba5944029e95440f6eb2ae",
+  "source_sha256": "8c49de791a8d3c20595c3a2e439ab1c87a8a7a9fcea9e8869e1d13e6bf35c185",
+  "full_c_sha256": "9da6d058d4ae3c7325fb28f1b830551d2704f5ee88a102b6ebacdf4b996c1a50",
+  "freestanding_c_sha256": "857ceda9c131b03bc2190dfcb7079681095df1fe9a716e6091bd6d1e548cad73",
   "lean_header_sha256": "22eed50aa703c4403010fabc12a7231ffa34dc979bd59ca1bfbac13c29a1dad2",
   "exports": [
     "bastion_abi_version",
@@ -40,7 +40,11 @@
     "bastion_net_port",
     "bastion_net_payload",
     "bastion_console_action",
-    "bastion_console_budget"
+    "bastion_console_budget",
+    "bastion_user_buffer",
+    "bastion_elf_segment",
+    "bastion_arm_page",
+    "bastion_riscv_page"
   ],
   "reachable_functions": [
     "bastion_abi_version",
@@ -78,7 +82,11 @@
     "bastion_net_port",
     "bastion_net_payload",
     "bastion_console_action",
-    "bastion_console_budget"
+    "bastion_console_budget",
+    "bastion_user_buffer",
+    "bastion_elf_segment",
+    "bastion_arm_page",
+    "bastion_riscv_page"
   ],
   "scalar_primitives": [
     "lean_uint64_add",
@@ -90,16 +98,17 @@
     "lean_uint64_lor",
     "lean_uint64_mod",
     "lean_uint64_shift_left",
+    "lean_uint64_shift_right",
     "lean_uint64_sub"
   ],
   "removed": "Unreachable boxed wrappers and module initializers; retained bodies are unchanged.",
   "runtime": "Scalar primitives only; no allocation, reference counting, or module initialization.",
   "files_sha256": {
     "LEAN-LICENSE": "8b28515ffffc5c0fe2807d8ae3735b00b324d9b7ce807dd63ff6ac8922fbce7e",
-    "Runtime.full.c": "f2eee8cca7c30ee00df7cbee752b11ca92604f6a462dc1155f035e8b018d60f3",
-    "bindings.rs": "b1f746b523613832d75ff01d7a0d149aeebc7ab6b880be3c935056c46af24028",
-    "policy.c": "20df1714facb7b54fb8a1602e812d37ea928f84ce6ba5944029e95440f6eb2ae",
-    "policy.h": "e61c9244ce77ce50bf34b4f45ebd35815f3fff579305984d107be4578aa1bd58",
-    "scalars.h": "048651552e2f59842e819f07ab2861f8d9994ec375c313251f793babbba057d6"
+    "Runtime.full.c": "9da6d058d4ae3c7325fb28f1b830551d2704f5ee88a102b6ebacdf4b996c1a50",
+    "bindings.rs": "3ef4b4b04b6cbaf81007f7b07d0ea38a526ce603939d503d79ed250f40db123e",
+    "policy.c": "857ceda9c131b03bc2190dfcb7079681095df1fe9a716e6091bd6d1e548cad73",
+    "policy.h": "7260482cd4fafe405cbf1d8f686e01b889eb259f33ff498aaacbde1617039a0e",
+    "scalars.h": "c6eb58eb6deefb7f537176f034e874fffd10fbf9d07c8baec247122ec4f5251e"
   }
 }

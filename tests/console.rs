@@ -78,3 +78,20 @@ fn output_backpressure_is_atomic_and_wraps_without_losing_bytes() {
     assert!(!empty.push(b"x"));
     assert_eq!(empty.pop(), None);
 }
+#[test]
+fn input_overrun_discards_pending_bytes_and_reports_before_new_input() {
+    use bastion_core::console::InputQueue;
+    let mut q = InputQueue::<2>::new();
+    q.push(Ok(b'h'));
+    q.push(Ok(b'e'));
+    q.push(Ok(b'l'));
+    q.push(Ok(b'p'));
+    assert_eq!(q.pop(), Some(Err(())));
+    assert_eq!(q.pop(), None);
+    q.push(Ok(b'x'));
+    q.push(Err(()));
+    assert_eq!(q.pop(), Some(Err(())));
+    assert_eq!(q.pop(), None);
+    q.push(Ok(b'\n'));
+    assert_eq!(q.pop(), Some(Ok(b'\n')));
+}

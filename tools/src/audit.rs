@@ -25,8 +25,8 @@ impl<'a> Elf<'a> {
 
 fn symbols(data: &[u8]) -> Result<(BTreeSet<String>, BTreeSet<String>)> {
     let elf = Elf(data);
-    if elf.bytes(0, 6)? != b"\x7fELF\x02\x01" || elf.u16(18)? != 62 {
-        return Err("Expected little-endian x86-64 ELF64".into());
+    if elf.bytes(0, 6)? != b"\x7fELF\x02\x01" || ![62, 183, 243].contains(&elf.u16(18)?) {
+        return Err("Expected little-endian x86-64, AArch64 or RV64 ELF64".into());
     }
     let start = elf.size(40)?;
     let stride = usize::from(elf.u16(58)?);
@@ -136,8 +136,8 @@ pub fn kernel(path: &Path) -> Result<()> {
         "bastion_net_ipv4",
         "bastion_net_udp",
         "bastion_net_budget",
-        "bastion_console_action",
-        "bastion_console_budget",
+        "bastion_user_buffer",
+        "bastion_elf_segment",
         "bastion_net_tcp",
         "bastion_net_port",
         "bastion_net_payload",
@@ -156,6 +156,28 @@ pub fn kernel(path: &Path) -> Result<()> {
     println!(
         "PASS kernel: {} linked policy symbols",
         defined.iter().filter(|s| s.starts_with("bastion_")).count()
+    );
+    Ok(())
+}
+
+pub fn native_image(path: &Path, mapping: &str) -> Result<()> {
+    let (defined, undefined) = symbols(&fs::read(path)?)?;
+    let required = [
+        "bastion_account",
+        "bastion_next_slot",
+        "bastion_authorized",
+        "bastion_user_buffer",
+        "bastion_elf_segment",
+        mapping,
+    ];
+    if !undefined.is_empty()
+        || required.iter().any(|s| !defined.contains(*s))
+        || defined.iter().any(|s| forbidden(s, true))
+    {
+        return Err("Native image is missing required policy or has runtime dependencies".into());
+    }
+    println!(
+        "PASS native image: linked memory, scheduler, identity, ELF and copy policies; no undefined symbols"
     );
     Ok(())
 }

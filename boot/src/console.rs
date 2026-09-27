@@ -140,8 +140,21 @@ pub fn begin_interactive() {
         INTERACTIVE = true;
     }
 }
-pub fn output_available() -> usize {
-    unsafe { OUTPUT.available() }
+pub fn write_bytes(bytes: &[u8]) -> bool {
+    let mut encoded = [0u8; 512];
+    let mut count = 0;
+    if bytes.len() > 256 {
+        return false;
+    }
+    for &b in bytes {
+        if b == b'\n' {
+            encoded[count] = b'\r';
+            count += 1;
+        }
+        encoded[count] = b;
+        count += 1;
+    }
+    unsafe { OUTPUT.push(&encoded[..count]) }
 }
 pub fn drain() {
     unsafe {

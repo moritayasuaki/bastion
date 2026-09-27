@@ -1,0 +1,6 @@
+[target.x86_64-unknown-none]
+rustflags = ["-C", "link-arg=-Tlinker.ld", "-C", "relocation-model=static", "-C", "code-model=small"]
+[target.aarch64-unknown-none-softfloat]
+rustflags = ["-C", "link-arg=-Tlinker.ld", "-C", "relocation-model=static"]
+[target.riscv64imac-unknown-none-elf]
+rustflags = ["-C", "link-arg=-Tlinker.ld", "-C", "relocation-model=static"]

@@ -13,6 +13,10 @@ fn extracted_c_matches_lean_across_every_export() {
         let v: Vec<u64> = fields[1..].iter().map(|x| x.parse().unwrap()).collect();
         let (a, b, c, d, e, f) = (v[0], v[1], v[2], v[3], v[4], v[5]);
         let actual = match fields[0] {
+            "arm_page" => p::arm_page(a, b),
+            "riscv_page" => p::riscv_page(a, b),
+            "user_buffer" => p::user_buffer(a, b, c, d).into(),
+            "elf_segment" => p::elf_segment(a, b, c, d).into(),
             "abi_version" => p::abi_version(a),
             "valid_config" => p::valid_config(a, b).into(),
             "valid_limits" => p::valid_limits(a, b, c, d, e).into(),
@@ -55,7 +59,7 @@ fn extracted_c_matches_lean_across_every_export() {
         covered.insert(fields[0]);
         count += 1;
     }
-    assert_eq!(covered.len(), 36);
+    assert_eq!(covered.len(), 40);
     assert!(count > 10_000, "truncated conformance corpus: {count}");
 }
 

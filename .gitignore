@@ -1,6 +1,8 @@
 # Build outputs and local evidence
 /target/
 /boot/target/
+/user/target/
+/ports/target/
 /proof/.lake/
 /dist/
 /work/

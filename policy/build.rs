@@ -50,6 +50,20 @@ fn main() {
             "-mcmodel=kernel",
             "-fno-pic",
         ]);
+    } else if target == "aarch64-unknown-none-softfloat" {
+        compiler.args([
+            "--target=aarch64-none-elf",
+            "-mgeneral-regs-only",
+            "-fno-pic",
+        ]);
+    } else if target == "riscv64imac-unknown-none-elf" {
+        compiler.args([
+            "--target=riscv64-none-elf",
+            "-march=rv64imac",
+            "-mabi=lp64",
+            "-mcmodel=medany",
+            "-fno-pic",
+        ]);
     } else {
         compiler.arg(format!("--target={target}"));
     }

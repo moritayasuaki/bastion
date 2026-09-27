@@ -37,6 +37,10 @@ mod ffi {
         pub fn bastion_net_payload(a0: u64) -> u8;
         pub fn bastion_console_action(a0: u64, a1: u64, a2: u64) -> u64;
         pub fn bastion_console_budget(a0: u64) -> u8;
+        pub fn bastion_user_buffer(a0: u64, a1: u64, a2: u64, a3: u64) -> u8;
+        pub fn bastion_elf_segment(a0: u64, a1: u64, a2: u64, a3: u64) -> u8;
+        pub fn bastion_arm_page(a0: u64, a1: u64) -> u64;
+        pub fn bastion_riscv_page(a0: u64, a1: u64) -> u64;
     }
 }
 #[inline]
@@ -218,4 +222,24 @@ pub fn console_action(a0: u64, a1: u64, a2: u64) -> u64 {
 pub fn console_budget(a0: u64) -> u8 {
     // SAFETY: the generated ABI accepts all values of these integer types.
     unsafe { ffi::bastion_console_budget(a0) }
+}
+#[inline]
+pub fn user_buffer(a0: u64, a1: u64, a2: u64, a3: u64) -> u8 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_user_buffer(a0, a1, a2, a3) }
+}
+#[inline]
+pub fn elf_segment(a0: u64, a1: u64, a2: u64, a3: u64) -> u8 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_elf_segment(a0, a1, a2, a3) }
+}
+#[inline]
+pub fn arm_page(a0: u64, a1: u64) -> u64 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_arm_page(a0, a1) }
+}
+#[inline]
+pub fn riscv_page(a0: u64, a1: u64) -> u64 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_riscv_page(a0, a1) }
 }

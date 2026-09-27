@@ -12,7 +12,7 @@ use core::{
 };
 mod console;
 mod network;
-mod shell;
+mod userspace;
 global_asm!(include_str!("entry.S"));
 
 macro_rules! log { ($($arg:tt)*) => { console::print(format_args!($($arg)*)); }; }
@@ -200,8 +200,8 @@ struct Space {
     pdpt: Table,
     pd: Table,
     pt: Table,
-    code: Page,
-    data: Page,
+    code: [Page; 16],
+    data: [Page; 16],
 }
 impl Space {
     const ZERO: Self = Self {
@@ -209,11 +209,11 @@ impl Space {
         pdpt: Table([0; 512]),
         pd: Table([0; 512]),
         pt: Table([0; 512]),
-        code: Page([0; 4096]),
-        data: Page([0; 4096]),
+        code: [Page([0; 4096]); 16],
+        data: [Page([0; 4096]); 16],
     };
 }
-const N: usize = 5;
+const N: usize = 6;
 static mut SPACES: [Space; N] = [Space::ZERO; N];
 static mut PHYS_BASE: u64 = 0;
 static mut VIRT_BASE: u64 = 0;
@@ -235,6 +235,7 @@ struct State {
     cap_ok: bool,
     throttled: bool,
     passed: bool,
+    init_started: bool,
 }
 unsafe extern "C" {
     fn load_segments();
@@ -347,7 +348,7 @@ unsafe fn address_space(
     );
     let len = end as usize - start as usize;
     assert!(len <= 4096);
-    core::ptr::copy_nonoverlapping(start, space.code.0.as_mut_ptr(), len);
+    core::ptr::copy_nonoverlapping(start, space.code[0].0.as_mut_ptr(), len);
     physical((&raw const space.root) as u64)
 }
 
@@ -390,13 +391,17 @@ unsafe extern "C" fn kernel_main() -> ! {
     asm!("mov cr0, {}",in(reg) cr0);
     interrupts();
     network::init();
-    let mut core = Kernel::new(48, 100_000_000, 1_000_000).unwrap();
+    let mut core = Kernel::new(80, 100_000_000, 1_000_000).unwrap();
     let limits = Limits {
         pages: 6,
         capabilities: 2,
         cpu_budget: 20_000_000,
     };
-    let pids = core::array::from_fn(|_| core.spawn(limits, 6).unwrap());
+    let first = core.spawn(limits, 6).unwrap();
+    let mut pids = [first; N];
+    for pid in &mut pids[1..5] {
+        *pid = core.spawn(limits, 6).unwrap();
+    }
     assert_eq!(core.reserve_pages(pids[0], 1), Err(Error::PageLimit));
     log!("PASS MEMORY QUOTA: 6 PAGES PER PROCESS\n");
     let programs = [
@@ -408,7 +413,7 @@ unsafe extern "C" fn kernel_main() -> ! {
     ];
     let mut roots = [0; N];
     let mut frames = [Frame::ZERO; N];
-    for i in 0..N {
+    for i in 0..5 {
         roots[i] = address_space(i, root, hhdm, programs[i].0, programs[i].1);
         frames[i] = Frame {
             rip: 0x400000,
@@ -446,6 +451,7 @@ unsafe extern "C" fn kernel_main() -> ! {
         cap_ok: false,
         throttled: false,
         passed: false,
+        init_started: false,
     });
     let state = STATE.assume_init_mut();
     let next = select(state);
@@ -511,6 +517,10 @@ unsafe extern "C" fn trap(frame: &Frame) -> *const Frame {
         128 => {
             let i = index.expect("syscall without user process");
             assert_eq!(frame.cs & 3, 3);
+            if frame.rax >= 64 {
+                s.frames[i].rax = userspace::syscall(s, i, frame);
+                return select(s);
+            }
             let opcode = decisions::syscall_opcode(frame.rax);
             let call = match opcode {
                 0 => Some(Call::SelfInfo),
@@ -603,7 +613,10 @@ unsafe extern "C" fn trap(frame: &Frame) -> *const Frame {
         asm!("out dx, eax",in("dx") 0xf4u16,in("eax") if ok {0x10u32} else {0x11u32},options(nomem,nostack));
     }
     if frame.vector == 32 && s.passed {
-        shell::poll(s);
+        if !s.init_started {
+            userspace::launch(s);
+        }
+        userspace::poll();
     }
     select(s)
 }

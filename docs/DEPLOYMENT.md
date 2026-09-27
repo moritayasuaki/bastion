@@ -28,3 +28,6 @@ a persistent boot disk are not implemented. The TCP/UDP demo uses QEMU's static
 
 A hosted service still needs provider network configuration, a userspace interface,
 modern hardware support, a loader, storage, and capability-controlled user services.
+
+AArch64/RV64 QEMU direct-boot images are also available. They are not yet VPS firmware
+images and lack NIC/platform discovery; see [PORTS.md](PORTS.md).

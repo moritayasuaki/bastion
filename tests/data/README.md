@@ -1,7 +1,7 @@
 # Policy conformance fixtures
 
 - `policy-vectors.csv`: 1,254 cases from the abstract Lean policy model.
-- `runtime-vectors.csv`: 20,577 cases across every executable Lean policy export,
+- `runtime-vectors.csv`: 22,309 cases across every executable Lean policy export,
   including invalid inputs, word boundaries, scheduler masks and network bounds.
 
 The tests compare these results with actual linked C execution. `cargo xtask check`

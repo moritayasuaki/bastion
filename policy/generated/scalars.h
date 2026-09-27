@@ -13,4 +13,5 @@ static inline uint64_t lean_uint64_land(uint64_t a, uint64_t b) { return a & b; 
 static inline uint64_t lean_uint64_lor(uint64_t a, uint64_t b) { return a | b; }
 static inline uint64_t lean_uint64_mod(uint64_t a1, uint64_t a2) { return a2 == 0 ? a1 : a1%a2; }
 static inline uint64_t lean_uint64_shift_left(uint64_t a, uint64_t b) { return a << (b % 64); }
+static inline uint64_t lean_uint64_shift_right(uint64_t a, uint64_t b) { return a >> (b % 64); }
 static inline uint64_t lean_uint64_sub(uint64_t a1, uint64_t a2) { return a1-a2; }

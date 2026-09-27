@@ -155,3 +155,43 @@ impl<const N: usize> OutputQueue<N> {
         Some(byte)
     }
 }
+
+/// Bounded raw UART input queue. Hardware/software overruns invalidate pending
+/// input; the next reader receives an error so a truncated command cannot run.
+pub struct InputQueue<const N: usize> {
+    bytes: OutputQueue<N>,
+    error: bool,
+}
+impl<const N: usize> Default for InputQueue<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+impl<const N: usize> InputQueue<N> {
+    pub const fn new() -> Self {
+        Self {
+            bytes: OutputQueue::new(),
+            error: false,
+        }
+    }
+    pub fn push(&mut self, byte: Result<u8, ()>) {
+        if self.error {
+            return;
+        }
+        if let Ok(b) = byte
+            && self.bytes.push(&[b])
+        {
+            return;
+        }
+        self.bytes = OutputQueue::new();
+        self.error = true;
+    }
+    pub fn pop(&mut self) -> Option<Result<u8, ()>> {
+        if self.error {
+            self.error = false;
+            Some(Err(()))
+        } else {
+            self.bytes.pop().map(Ok)
+        }
+    }
+}

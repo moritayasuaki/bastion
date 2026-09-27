@@ -4,6 +4,7 @@ Keep changes small enough to review and explain the behavior being changed.
 Include a relevant regression test for changes to isolation, parsing, or transport.
 
 Run `cargo xtask check`. For kernel/driver changes, also build and run the boot tests;
+for userspace/port changes, run the console and both `test-port` suites;
 for network changes, run `cargo xtask network-test`. See [validation](docs/VALIDATION.md).
 
 After changing executable Lean policy:

@@ -3,6 +3,7 @@ mod audit;
 mod build;
 mod console;
 mod extract;
+mod portable;
 mod smoke;
 
 use bastion_integrity::Result;
@@ -102,6 +103,9 @@ fn dispatch() -> Result<()> {
                 .args(args)
                 .current_dir(root))?;
         }
+        "build-port" | "test-port" | "console-port" => {
+            portable::dispatch(root, &Options::parse(args, &[], &["--arch"])?, &action)?
+        }
         "build" => build::build(
             root,
             &Options::parse(args, &["--test"], &["--work", "--limine-dir", "--out"])?,
@@ -136,6 +140,7 @@ fn dispatch() -> Result<()> {
         "help" | "--help" | "-h" => println!(
             "cargo xtask extract [--check | --verify]\n\
              cargo xtask check\n\
+             cargo xtask build-port|test-port|console-port --arch aarch64|riscv64\n\
              cargo xtask build [--test] [--work DIR] [--limine-dir DIR] [--out ISO]\n\
              cargo xtask smoke [--iso ISO] [--machine pc|q35] [--memory 128M]\n\
              [--uefi CODE --uefi-vars VARS] [--log FILE]\n\

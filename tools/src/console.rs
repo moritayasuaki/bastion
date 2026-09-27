@@ -91,7 +91,15 @@ pub fn console(root: &Path, options: &Options, test: bool) -> Result<()> {
         ]);
         return run(&mut command);
     }
-    let log_dir = root.join("target/bastion/console-test");
+    check_guest(root, &mut command, options.flag("--no-network"), false)
+}
+pub fn check_guest(root: &Path, command: &mut Command, no_network: bool, port: bool) -> Result<()> {
+    let log_dir = root.join(if port {
+        "target/bastion/port-test"
+    } else {
+        "target/bastion/console-test"
+    });
+
     fs::create_dir_all(&log_dir)?;
     command
         .args(["-serial", "stdio"])
@@ -121,13 +129,18 @@ pub fn console(root: &Path, options: &Options, test: bool) -> Result<()> {
         log: fs::File::create(log_dir.join("serial.log"))?,
     };
     let boot = serial.until_prompt(Duration::from_secs(45))?;
-    if !boot.contains("ALL BOOT CHECKS PASSED") {
+    if !boot.contains(if port {
+        "ALL PORT CHECKS PASSED"
+    } else {
+        "ALL BOOT CHECKS PASSED"
+    }) || !boot.contains("PASS USER ABI: BAD POINTERS AND FORGED HANDLES DENIED")
+    {
         return Err("console started before successful boot checks".into());
     }
     let help = serial.request(&mut input, b"help\r\n")?;
     require(
         &help,
-        &["process status", "Ctrl-C cancels", "Read-only monitor"],
+        &["process status", "Ctrl-C cancels", "Userspace shell"],
     )?;
     require(
         &serial.request(&mut input, b"ps\r")?,
@@ -142,10 +155,18 @@ pub fn console(root: &Path, options: &Options, test: bool) -> Result<()> {
     )?;
     require(
         &serial.request(&mut input, b"limits\n")?,
-        &["reserved=12 capacity=48", "pages=6/6", "caps=0/2"],
+        &[
+            if port {
+                "reserved=42 capacity=64"
+            } else {
+                "reserved=48 capacity=80"
+            },
+            "pages=6/6",
+            "caps=0/2",
+        ],
     )?;
     let network = serial.request(&mut input, b"net status\r")?;
-    if options.flag("--no-network") {
+    if no_network {
         require(&network, &["NETWORK DOWN"])?;
     } else {
         require(

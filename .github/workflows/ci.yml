@@ -23,9 +23,9 @@ jobs:
       - name: Install native tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang make xorriso qemu-system-x86 ovmf
+          sudo apt-get install -y clang make xorriso qemu-system-x86 qemu-system-arm qemu-system-misc ovmf
       - name: Install Rust
-        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target x86_64-unknown-none
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --component rustfmt,clippy --target x86_64-unknown-none,aarch64-unknown-none-softfloat,riscv64imac-unknown-none-elf
       - name: Install Lean manager
         run: |
           curl --fail --silent --show-error --location https://raw.githubusercontent.com/leanprover/elan/0e36a07b9bbcc5381fa6250df109f9a4f94d7bac/elan-init.sh -o /tmp/elan-init.sh
@@ -48,3 +48,9 @@ jobs:
           cargo xtask console-test
           cargo xtask console-test --no-network
           cargo xtask console-test --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd
+      - name: AArch64 and RV64 isolation and userspace console
+        run: |
+          cargo xtask build-port --arch aarch64
+          cargo xtask test-port --arch aarch64
+          cargo xtask build-port --arch riscv64
+          cargo xtask test-port --arch riscv64

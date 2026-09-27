@@ -185,4 +185,31 @@ def consoleAction (byte length discarding : UInt64) : UInt64 :=
 @[export bastion_console_budget]
 def consoleBudget (processed : UInt64) : Bool := processed < 16
 
+-- User copy bounds use subtraction after ordering, never wrapping pointer+length.
+@[export bastion_user_buffer]
+def userBuffer (pointer length base size : UInt64) : Bool :=
+  length ≤ 256 && base ≤ pointer && pointer - base ≤ size &&
+  length ≤ size - (pointer - base) && size ≤ 65536
+
+-- ELF profile: RX code (including read-only constants), RW/NX data, fixed windows.
+-- The upper 32 KiB of data is reserved for the initial stack.
+@[export bastion_elf_segment]
+def elfSegment (address fileSize memorySize flags : UInt64) : Bool :=
+  memorySize > 0 && fileSize ≤ memorySize &&
+  ((flags == 5 && 0x400000 ≤ address && address < 0x410000 && memorySize ≤ 0x410000 - address) ||
+   (flags == 6 && 0x500000 ≤ address && address < 0x508000 && memorySize ≤ 0x508000 - address))
+
+-- Hardware-specific leaf encodings share the same RX / RW-NX policy.
+@[export bastion_arm_page]
+def armPage (physical kind : UInt64) : UInt64 :=
+  if (physical &&& 0xfff) != 0 || physical ≥ 0x1000000000000 then 0
+  else if kind == 1 then physical ||| 0x200000000007c7
+  else if kind == 2 then physical ||| 0x60000000000747 else 0
+
+@[export bastion_riscv_page]
+def riscvPage (physical kind : UInt64) : UInt64 :=
+  if (physical &&& 0xfff) != 0 || physical ≥ 0x100000000000000 then 0
+  else if kind == 1 then (physical >>> 2) ||| 0x5b
+  else if kind == 2 then (physical >>> 2) ||| 0xd7 else 0
+
 end Bastion.Runtime

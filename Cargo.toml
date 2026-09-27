@@ -19,4 +19,4 @@ panic = "abort"
 
 [workspace]
 members = [".", "policy", "tools/lab", "tools", "tools/integrity"]
-exclude = ["boot"]
+exclude = ["boot", "user", "ports"]

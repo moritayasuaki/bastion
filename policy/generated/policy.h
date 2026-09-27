@@ -37,3 +37,7 @@ uint8_t bastion_net_port(uint64_t v_port_549_);
 uint8_t bastion_net_payload(uint64_t v_size_558_);
 uint64_t bastion_console_action(uint64_t v_byte_565_, uint64_t v_length_566_, uint64_t v_discarding_567_);
 uint8_t bastion_console_budget(uint64_t v_processed_616_);
+uint8_t bastion_user_buffer(uint64_t v_pointer_623_, uint64_t v_length_624_, uint64_t v_base_625_, uint64_t v_size_626_);
+uint8_t bastion_elf_segment(uint64_t v_address_648_, uint64_t v_fileSize_649_, uint64_t v_memorySize_650_, uint64_t v_flags_651_);
+uint64_t bastion_arm_page(uint64_t v_physical_688_, uint64_t v_kind_689_);
+uint64_t bastion_riscv_page(uint64_t v_physical_710_, uint64_t v_kind_711_);

@@ -1,6 +1,6 @@
 # Lean → C → Rust → native kernel
 
-The executable policy source is `proof/Bastion/Runtime.lean`. Its 36 `@[export ...]` definitions provide stable C entry points. Rust invokes those functions through generated scalar bindings; resource and authorization decisions are no longer duplicated as handwritten Rust predicates.
+The executable policy source is `proof/Bastion/Runtime.lean`. Its 40 `@[export ...]` definitions provide stable C entry points. Rust invokes those functions through generated scalar bindings; resource and authorization decisions are no longer duplicated as handwritten Rust predicates.
 
 ## Areas implemented in Lean
 
@@ -11,9 +11,11 @@ The executable policy source is `proof/Bastion/Runtime.lean`. Its 36 `@[export .
 | Identity/lifecycle | Fresh identifier calculation, identity lookup predicate, target revocation predicate |
 | Authority | Rights subsets, caller/owner/liveness authorization, rights restriction |
 | CPU | Clock validation, charging, per-period accounting, runnable status, next slot/cursor, deadlines |
+| ELF/copies | Static segment windows, W^X admission and bounded user buffers |
+| ARM/RV protection | RX and RW/NX user leaf entries |
 | x86 protection | User return addresses, safe flags, supervisor-only mappings, RX/RW-NX page entries |
 | Console | Input action, printable-character/line bounds, polling budget |
-| Entry filtering | Supported syscall opcode and policy ABI version |
+| Entry filtering | Legacy syscall opcode and policy ABI version |
 | Network | Frame/IP/UDP/TCP bounds, fragment rejection, poll budget, ports, outbound datagram limit |
 
 Rust still owns arrays, exclusive access, capability lookup, transaction ordering, physical frame placement, and register/interrupt operations. The complete kernel state machine is not compiled from Lean in this milestone. Extending Lean to own arrays or higher-order state would require a broader runtime strategy or another explicitly checked representation.
@@ -31,7 +33,7 @@ This is Lean's actual C backend. The complete result is retained as `policy/gene
 
 The generated full module includes unused boxed wrappers and an initializer. The subset adapter finds the scalar exports and their transitive dependencies, checks every call against defined scalar functions or an explicit primitive allowlist, and copies the reachable function bodies **verbatim** into `policy.c`. It fails on an unsupported ABI, missing definition, object/global dependency, or unknown runtime call. It does not translate the decision logic a second time.
 
-The required ten scalar primitives are copied verbatim from that same Lean toolchain's `include/lean/lean.h` into `scalars.h`, preserving Lean's unsigned overflow, division-by-zero, and shift semantics. Their original license accompanies the source and ISO. No replacement allocator, fake boxed objects, or stubbed runtime initializers are linked.
+The required eleven scalar primitives are copied verbatim from that same Lean toolchain's `include/lean/lean.h` into `scalars.h`, preserving Lean's unsigned overflow, division-by-zero, and shift semantics. Their original license accompanies the source and ISO. No replacement allocator, fake boxed objects, or stubbed runtime initializers are linked.
 
 `policy/generated/manifest.json` records the Lean version, source and compiler-output hashes, all exported/reachable functions, primitive allowlist, and generated-file hashes. `cargo xtask extract --check` regenerates all artifacts and compares them byte-for-byte. Every Cargo build also checks saved source/artifact hashes and rejects stale output.
 
@@ -53,15 +55,15 @@ To use the policy from another C program, compile `policy.c` and include `policy
 
 ## Compilation and linkage
 
-The `bastion-policy` crate uses `policy/build.rs` to invoke Clang. For `x86_64-unknown-none`, C is compiled as freestanding x86-64 with no red zone, SSE/MMX, stack protector, or libc builtins. Lean's bundled `llvm-ar` writes a GNU-format archive for the bare-metal target and a Darwin-format archive for macOS host tests. `BASTION_CC` and `BASTION_AR` can override Clang and llvm-ar.
+The `bastion-policy` crate uses `policy/build.rs` to invoke Clang. For `x86_64-unknown-none`, C is compiled as freestanding x86-64 with no red zone, SSE/MMX, stack protector, or libc builtins. AArch64 uses general registers only; RV64 uses IMAC/LP64 and the medany code model. Lean's bundled `llvm-ar` writes a GNU-format archive for the bare-metal target and a Darwin-format archive for macOS host tests. `BASTION_CC` and `BASTION_AR` can override Clang and llvm-ar.
 
-The Rust kernel links that static archive. `tools/src/audit.rs` reads the resulting ELF symbol tables and requires all 36 exports in the C object, no undefined object symbols, no boxed/heap runtime, and the critical policy symbols in the final kernel. The linker discards unused exports; 35 policy symbols survive in the current boot image.
+The Rust kernel links that static archive. `tools/src/audit.rs` reads the resulting ELF symbol tables and requires all 40 exports in the C object, no undefined object symbols, no boxed/heap runtime, and the critical policy symbols in the final kernel. The linker discards unused exports; each image retains the policies it uses, and the native-image audit requires its critical symbols.
 
 The C functions operate only on passed scalar values and do not touch global state. Rust wrappers can expose them safely for all representable integer arguments. The storage/interrupt synchronization rules remain those documented in `ARCHITECTURE.md`.
 
 ## Validation and proof scope
 
-`RuntimeProofs.lean` checks properties of the definitions actually sent to the compiler. Reservation and charging are connected to the natural-number model; other proofs cover rights, bounded scheduler output, user flags, and page protection bits. `RuntimeVectors.lean` executes all exports in Lean and emits 20,577 cases, which the Rust integration tests compare to the linked C implementation. The earlier 1,254 abstract model cases remain as an independent model check.
+`RuntimeProofs.lean` checks properties of the definitions actually sent to the compiler. Reservation and charging are connected to the natural-number model; other proofs cover rights, bounded scheduler output, user flags, and page protection bits. `RuntimeVectors.lean` executes all exports in Lean and emits 22,309 cases, which the Rust integration tests compare to the linked C implementation. The earlier 1,254 abstract model cases remain as an independent model check.
 
 The Lean compiler, C compiler, subset adapter, scalar runtime primitives, FFI ABI, Rust state updates, and hardware layer remain in the trusted computing base. There is no proof that the subset adapter or machine-code compiler preserves all semantics, nor a whole-kernel verification claim. The fresh-generation checks, symbol audits, cross-language cases, and BIOS/UEFI attack tests provide integration evidence with that explicit scope.
 

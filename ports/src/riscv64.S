@@ -1,0 +1,98 @@
+.section .text.entry
+.global _start
+_start:
+    csrw sie, zero
+    la sp,KSTACK+65536
+    call kernel_main
+1:  wfi
+    j 1b
+.section .text
+.balign 4
+.global exception
+exception:
+    csrrw sp,sscratch,sp
+    addi sp,sp,-272
+    sd zero,0(sp)
+    sd ra,8(sp)
+    sd t0,40(sp)
+    csrr t0,sscratch
+    sd t0,16(sp)
+    sd gp,24(sp)
+    sd tp,32(sp)
+    sd t1,48(sp)
+    sd t2,56(sp)
+    sd s0,64(sp)
+    sd s1,72(sp)
+    sd a0,80(sp)
+    sd a1,88(sp)
+    sd a2,96(sp)
+    sd a3,104(sp)
+    sd a4,112(sp)
+    sd a5,120(sp)
+    sd a6,128(sp)
+    sd a7,136(sp)
+    sd s2,144(sp)
+    sd s3,152(sp)
+    sd s4,160(sp)
+    sd s5,168(sp)
+    sd s6,176(sp)
+    sd s7,184(sp)
+    sd s8,192(sp)
+    sd s9,200(sp)
+    sd s10,208(sp)
+    sd s11,216(sp)
+    sd t3,224(sp)
+    sd t4,232(sp)
+    sd t5,240(sp)
+    sd t6,248(sp)
+    csrr t0,sepc
+    csrr t1,sstatus
+    sd t0,256(sp)
+    sd t1,264(sp)
+    mv a0,sp
+    call trap
+.global restore
+restore:
+    mv t6,a0
+    ld t0,256(t6)
+    ld t1,264(t6)
+    csrw sepc,t0
+    csrw sstatus,t1
+    la t0,KSTACK+65536
+    csrw sscratch,t0
+    ld ra,8(t6)
+    ld sp,16(t6)
+    ld gp,24(t6)
+    ld tp,32(t6)
+    ld t0,40(t6)
+    ld t1,48(t6)
+    ld t2,56(t6)
+    ld s0,64(t6)
+    ld s1,72(t6)
+    ld a0,80(t6)
+    ld a1,88(t6)
+    ld a2,96(t6)
+    ld a3,104(t6)
+    ld a4,112(t6)
+    ld a5,120(t6)
+    ld a6,128(t6)
+    ld a7,136(t6)
+    ld s2,144(t6)
+    ld s3,152(t6)
+    ld s4,160(t6)
+    ld s5,168(t6)
+    ld s6,176(t6)
+    ld s7,184(t6)
+    ld s8,192(t6)
+    ld s9,200(t6)
+    ld s10,208(t6)
+    ld s11,216(t6)
+    ld t3,224(t6)
+    ld t4,232(t6)
+    ld t5,240(t6)
+    ld t6,248(t6)
+    sret
+.global idle
+idle:
+    wfi
+    j idle

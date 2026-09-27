@@ -1,105 +1,82 @@
 # Serial console
 
-A **serial console** is a text input/output connection to the operating system.
-The OS writes characters to a serial port and receives the characters you type.
-Historically that port connected a physical terminal with a cable. A hypervisor
-can emulate the port and connect it to a terminal window or a provider's console.
-The guest does not need an IP address, SSH, or a functioning network stack.
+A **serial console** is a text connection to an operating system. The OS writes
+characters to a serial port and receives the characters you type. A hypervisor
+emulates that port and connects it to a terminal or provider console. This works
+without a guest IP address or SSH.
 
-The serial port is the transport. The prompt and commands are the program using
-that transport. Bastion's first implementation is a read-only **kernel monitor**;
-it is not a POSIX shell or a userspace process.
+The serial port is the transport; the shell is the program using it. Bastion's
+commands now run in a separate **userspace Rust ELF application**. The kernel owns
+the UART and validates console/status syscalls. The shell has administrative status
+access, but cannot directly read kernel memory. There is no authentication protocol
+on the serial connection; access to the terminal grants access to the shell.
 
 ## Start it
 
 ```sh
-cd bastion
 cargo xtask build
 cargo xtask console
+# Other native CPU ports:
+cargo xtask build-port --arch aarch64
+cargo xtask console-port --arch aarch64
+# Substitute riscv64 for the RISC-V port.
 ```
 
-After the boot checks, the terminal shows:
+After boot checks and user-ABI rejection probes:
 
 ```text
 Bastion serial console. Type help.
 bastion> help
 ```
 
-Type a command and press Enter. Backspace/Delete erases one character; Ctrl-U clears
-the line; Ctrl-C cancels it. Exit QEMU with **Ctrl-A, then X**. Commands are lowercase.
-Both CR and LF are accepted, and CRLF submits only once. Lines are limited to 64
-ASCII bytes; overlong lines, unsupported control/non-ASCII bytes and UART receive
-errors reject the entire line. Ctrl-U, Ctrl-C or Enter recovers input. Arrow-key
-history, tab completion and escape sequences are not implemented.
+Exit QEMU with **Ctrl-A, then X**. Backspace/Delete edits, Ctrl-U clears the line,
+and Ctrl-C cancels. Both CR and LF work; CRLF submits once. Lines are limited to
+64 ASCII bytes. Invalid/overlong input or UART errors reject the whole line, so a
+truncated prefix cannot execute. There is no history, tab completion, escape parser,
+filesystem, program-launch command or POSIX shell syntax.
 
 | Command | Result |
 |---|---|
-| `help` or `?` | Commands and editing keys |
+| `help` / `?` | Commands and editing keys |
 | `ps` | Live process usage and exited processes |
-| `limits` | Reserved pages/global capacity and each live process's limits |
-| `net status` | NIC availability, static address/gateway, UDP port and TCP state |
-| `uptime` | PIT timer ticks and approximate elapsed seconds |
-| `version` | Kernel version and Lean policy ABI version |
+| `limits` | Page reservations and process limits |
+| `net status` | Network availability and TCP/UDP status; down on ARM/RV |
+| `uptime` | Delivered timer ticks and approximate seconds |
+| `version` | Architecture, kernel version, policy and userspace ABI versions |
 
-CPU accounting values are TSC ticks, not milliseconds. Uptime uses delivered PIT
-interrupts at approximately 1000 Hz; it is not a wall-clock accuracy guarantee.
-`ps` distinguishes runnable, throttled and exited tasks. It does not label a task
-as running while the monitor itself is executing in the kernel.
+These are built-in commands in one userspace application, not separate binaries.
+CPU units are hardware counter ticks; uptime uses timer interrupts at roughly 1 kHz,
+not a wall-clock guarantee. `ps` reports runnable, throttled or exited status.
+The kernel's process-control capability count excludes the two fixed service grants.
 
-`--no-network` demonstrates that the console works without a NIC. `--iso PATH`
-selects a release ISO; `--uefi CODE --uefi-vars VARS` selects firmware. The boot-test
-ISO exits QEMU automatically and cannot host an interactive session. For example:
+On x86, `--no-network`, `--iso PATH`, and `--uefi CODE --uefi-vars VARS` are supported
+by the console launcher. A boot-test ISO exits automatically and is not interactive.
+The launcher connects serial to stdio and opens no public listener. It uses QEMU's
+[character-device multiplexer](https://www.qemu.org/docs/master/system/invocation.html#character-device-options).
 
-```sh
-cargo xtask console --no-network
-cargo xtask console --uefi /opt/homebrew/share/qemu/edk2-x86_64-code.fd \
-  --uefi-vars /opt/homebrew/share/qemu/edk2-i386-vars.fd
-```
+## Implementation boundary
 
-The launcher connects COM1 to QEMU stdio and uses its character multiplexer for the
-exit key. It does not open a public console listener. BIOS uses 64 MB; UEFI 128 MB.
-Equivalent essential QEMU options are:
+x86 uses COM1 at `0x3f8` with 115200 8N1. ARM uses PL011; RV uses the virt 16550 UART.
+Interactive input is serial-only. The x86 framebuffer displays boot diagnostics;
+a VNC keyboard is a different, unsupported device. A VPS must expose a compatible
+serial connection. No VPS has been tested.
 
-```text
--display none -monitor none \
--chardev stdio,id=console,mux=on,signal=off -serial chardev:console
-```
+The kernel polls at most 16 input bytes per timer tick into a 256-byte input queue.
+UART/queue overrun discards pending input and reports an error to the editor. The
+4096-byte output queue accepts a complete bounded write or returns `Again`, without
+overwriting earlier bytes. LF expands to CRLF atomically. A tick makes at most 64
+nonwaiting output attempts. The application yields and retries when output is full.
+Boot/panic diagnostics use a separate bounded synchronous path.
 
-See the [QEMU character-device documentation](https://www.qemu.org/docs/master/system/invocation.html#character-device-options).
+The user process owns its 64-byte editor and command parsing. Lean-generated C
+chooses edit actions; kernel Lean checks validate buffer windows and launch authority.
+Polling bounds and the full UART/editor implementation have different proof scopes:
+only the specified scalar policy theorems are formally checked. Console service work
+has no separate quota, and interrupt overhead affects process CPU accounting.
 
-## Implementation and boundary
+See [USERSPACE.md](USERSPACE.md) for the executable and syscall contract.
 
-Bastion uses the PC-compatible COM1 UART at I/O address `0x3f8`, configured for
-115200 baud, eight data bits, no parity and one stop bit (115200 8N1). The existing
-framebuffer still displays boot diagnostics. Interactive commands use serial only;
-a graphical VNC keyboard is a different input device and is not implemented.
-A VPS must expose a compatible UART and its serial connection. No VPS has been tested.
-
-The monitor runs on the boot CPU with interrupts masked and exposes only status.
-There is no login/authentication protocol inside Bastion; access relies on control
-of the local terminal or the provider's console. It adds no user syscalls, process
-creation or direct access to kernel memory. A userspace shell requires the loader
-and capability-controlled console API described in [USERSPACE.md](USERSPACE.md).
-
-The safe core owns a 64-byte line buffer and a fixed output queue. Lean-generated C
-chooses input actions and limits each timer poll to 16 input bytes. Four new proofs
-cover append bounds, printable input, rejection state and poll bounds. Rust performs
-buffer updates, command matching and UART I/O; the full editor/driver is not proved.
-
-After boot the UART output queue holds 4096 bytes. The driver makes at most 64
-nonwaiting output attempts per tick; input pauses unless 2048 output bytes remain
-available, enough for one bounded response. At most one submitted command executes
-per tick. A full queue refuses new bytes without overwriting existing output; CRLF
-pairs enqueue atomically. A stalled console can lose incoming bytes when the UART
-FIFO overruns; that marks the line invalid. UART errors observed during output
-polling are retained until the editor consumes them. Panic output uses a separate
-bounded synchronous path so it does not depend on timer interrupts.
-
-Console work has no separate service quota. Current elapsed-TSC accounting includes
-interrupt overhead, so console activity can affect effective process CPU budgets.
-These bounds do not establish a complete real-time or DoS guarantee.
-
-## Tests
+## Verification
 
 ```sh
 cargo xtask check
@@ -107,11 +84,13 @@ cargo xtask build
 cargo xtask console-test
 cargo xtask console-test --no-network
 cargo xtask console-test --uefi CODE --uefi-vars VARS
+cargo xtask test-port --arch aarch64
+cargo xtask test-port --arch riscv64
 ```
 
-Host tests exercise editing, cancellation, CRLF, boundary-length lines, overflow,
-invalid bytes, UART error signaling, sustained input and atomic output backpressure.
-QEMU tests send real serial input and verify each command, editing, error recovery,
-repeated output, and timer progress. Input is paced below the UART FIFO limit;
-this does not claim lossless arbitrary-rate pasted input. Logs are ignored under
-`target/bastion/console-test/`.
+Tests send real UART input and cover commands, editing, invalid bytes, overflow,
+repeated output and timer progress. Booted init tests invalid pointers, oversized
+copies, code-page destinations and forged handles before showing its prompt. Host
+tests cover queue backpressure and overrun signaling. Input is paced for repeatable
+results; arbitrary-rate pasted input is not guaranteed lossless. Logs stay under
+ignored `target/bastion/`.

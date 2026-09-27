@@ -87,3 +87,14 @@ def main : IO Unit := do
           (consoleAction byte.toUInt64 length discarding)
   for n in [0,1,15,16,17,18446744073709551615] do
     emit "console_budget" [n] (truth (consoleBudget n))
+  for p in [0,0x3fffff,0x400000,0x40ffff,0x410000,0x4fffff,0x500000,0x507fff,0x508000,0x50ffff,0x510000,18446744073709551615] do
+    for n in [0,1,255,256,257,4096,65536,18446744073709551615] do
+      for size in [0,4096,65536,65537,18446744073709551615] do
+        emit "user_buffer" [p,n,0x500000,size] (truth (userBuffer p n 0x500000 size))
+      for flags in [0,4,5,6,7,18446744073709551615] do
+        emit "elf_segment" [p,n,n,flags] (truth (elfSegment p n n flags))
+        emit "elf_segment" [p,n,4096,flags] (truth (elfSegment p n 4096 flags))
+  for p in [0,1,4096,0x40080000,0x80200000,0xfffffffff000,0x1000000000000,0xffffffffffF000,0x100000000000000,18446744073709551615] do
+    for k in [0,1,2,3,18446744073709551615] do
+      emit "arm_page" [p,k] (armPage p k)
+      emit "riscv_page" [p,k] (riscvPage p k)

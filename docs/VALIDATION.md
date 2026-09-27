@@ -6,14 +6,14 @@ Run the complete source checks:
 cargo xtask check
 ```
 
-This checks 39 Lean theorems, regenerates and compares the committed C artifacts,
-executes 37 Rust tests, and checks formatting and Clippy for host and bare-metal
-code. The policy object audit requires all 36 scalar exports and no undefined
-symbols or Lean heap runtime. The boot image links 35 policy symbols.
+This checks 46 Lean theorems, regenerates and compares the committed C artifacts,
+executes 42 Rust tests, and checks formatting and Clippy for host and bare-metal
+code. The policy object audit requires all 40 scalar exports and no undefined
+symbols or Lean heap runtime. Per-image audits require the policies used by that architecture.
 
 | Corpus | Cases | Reference |
 |---|---:|---|
-| Executable policy | 20,577 | Lean runtime definitions across all 36 exports |
+| Executable policy | 22,309 | Lean runtime definitions across all 40 exports |
 | Abstract policy | 1,254 | Natural-number resource/capability model |
 
 The five network tests cover two virtual Ethernet peers: UDP boundaries, truncation,
@@ -22,11 +22,16 @@ and retransmission, a held receive window, partial streams, half-close and recon
 malformed headers, every truncation of a valid minimum TCP frame, and socket capacity.
 These are integration tests, not exhaustive protocol verification.
 
-Five console unit tests cover line editing, rejection and recovery, sustained input,
-and output-queue backpressure. The serial harness additionally verifies commands,
+Six console unit tests cover line editing, rejection and recovery, sustained input,
+output-queue backpressure and input-overrun handling. The serial harness additionally verifies commands,
 editing and continued timer progress through the QEMU UART.
 
+Four ELF/ABI tests check all three machine identifiers, data/BSS/stack initialization,
+malformed headers, invalid permissions, overlapping pages, entry addresses,
+truncations, systematic byte mutations and user-buffer bounds.
+
 ## Native boot and traffic
+
 
 ```sh
 cargo xtask build --test
@@ -53,3 +58,17 @@ Use 64 MB for BIOS and 128 MB for UEFI. The recorded development toolchain is Ru
 1.98.1, Lean 4.32.1, QEMU 11.1.1 and xorriso 1.5.8.pl02 on macOS. No public VPS has
 been validated. Test logs stay in ignored `target/bastion/`; generated images and
 local validation evidence are not public source artifacts.
+
+## AArch64 and RV64
+
+```sh
+cargo xtask build-port --arch aarch64
+cargo xtask test-port --arch aarch64
+cargo xtask build-port --arch riscv64
+cargo xtask test-port --arch riscv64
+```
+
+Both ports run the userspace shell and user-mode memory attacks. CI and local QEMU
+checks cover preemption, contained kernel/code/NX faults, forged service handles,
+invalid pointers and the complete serial command suite. These ports do not yet
+have NIC integration. See [PORTS.md](PORTS.md) for the exact supported machines.

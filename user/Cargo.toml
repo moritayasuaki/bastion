@@ -1,0 +1,13 @@
+[package]
+name = "bastion-init"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+[dependencies]
+bastion-core = { path = ".." }
+[profile.release]
+panic = "abort"
+opt-level = "s"
+lto = false
+[workspace]
