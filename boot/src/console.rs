@@ -1,5 +1,9 @@
 //! Serial output and a small framebuffer console for a VPS's web/VNC console.
 use crate::{input, out};
+use bastion_core::console::OutputQueue;
+static mut INTERACTIVE: bool = false;
+static mut RX_ERROR: bool = false;
+static mut OUTPUT: OutputQueue<4096> = OutputQueue::new();
 use core::fmt::{self, Write};
 
 #[repr(C)]
@@ -60,13 +64,20 @@ impl Write for Console {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for byte in s.bytes() {
             unsafe {
-                // Bounded polling avoids hanging on a platform without a UART.
-                for _ in 0..10000 {
-                    if input(0x3fd) & 0x20 != 0 {
-                        break;
-                    }
+                if INTERACTIVE {
+                    let bytes = if byte == b'\n' {
+                        &b"\r\n"[..]
+                    } else {
+                        core::slice::from_ref(&byte)
+                    };
+                    let _ = OUTPUT.push(bytes);
+                    continue;
                 }
-                out(0x3f8, byte);
+                if byte == b'\n' {
+                    serial_byte(b'\r');
+                }
+                serial_byte(byte);
+
                 if let Some(fb) = FB {
                     if byte == b'\n' {
                         X = 16;
@@ -105,6 +116,73 @@ impl Write for Console {
 }
 pub fn print(args: fmt::Arguments<'_>) {
     let _ = Console.write_fmt(args);
+}
+
+// All access is on one CPU with interrupts masked, as with console output.
+unsafe fn line_status() -> u8 {
+    let status = input(0x3fd);
+    // Reading LSR clears UART errors; retain them even when checking TX readiness.
+    if status != 0xff && status & 0x1e != 0 {
+        RX_ERROR = true;
+    }
+    status
+}
+unsafe fn serial_byte(byte: u8) {
+    for _ in 0..10000 {
+        if line_status() & 0x20 != 0 {
+            out(0x3f8, byte);
+            return;
+        }
+    }
+}
+pub fn begin_interactive() {
+    unsafe {
+        INTERACTIVE = true;
+    }
+}
+pub fn output_available() -> usize {
+    unsafe { OUTPUT.available() }
+}
+pub fn drain() {
+    unsafe {
+        // Never wait for the UART from the timer interrupt.
+        for _ in 0..64 {
+            if line_status() & 0x20 == 0 {
+                break;
+            }
+            let Some(byte) = OUTPUT.pop() else {
+                break;
+            };
+            out(0x3f8, byte);
+        }
+    }
+}
+pub fn read_byte() -> Option<Result<u8, ()>> {
+    unsafe {
+        let status = line_status();
+        if status == 0xff {
+            return None;
+        }
+        let byte = if status & 1 != 0 {
+            Some(input(0x3f8))
+        } else {
+            None
+        };
+        if RX_ERROR {
+            RX_ERROR = false;
+            Some(Err(()))
+        } else {
+            byte.map(Ok)
+        }
+    }
+}
+pub fn emergency_mode() {
+    unsafe {
+        INTERACTIVE = false;
+        while let Some(byte) = OUTPUT.pop() {
+            serial_byte(byte);
+        }
+    }
 }
 
 // Original 5x7 glyph patterns, used only by the diagnostic console.

@@ -47,13 +47,15 @@ fn extracted_c_matches_lean_across_every_export() {
             "net_tcp" => p::net_tcp(a, b).into(),
             "net_port" => p::net_port(a).into(),
             "net_payload" => p::net_payload(a).into(),
+            "console_action" => p::console_action(a, b, c),
+            "console_budget" => p::console_budget(a).into(),
             other => panic!("unknown exported operation {other}"),
         };
         assert_eq!(actual, v[6], "{line}");
         covered.insert(fields[0]);
         count += 1;
     }
-    assert_eq!(covered.len(), 34);
+    assert_eq!(covered.len(), 36);
     assert!(count > 10_000, "truncated conformance corpus: {count}");
 }
 

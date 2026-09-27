@@ -5,6 +5,10 @@ still use the existing `int 0x80` demonstration ABI (operations 0–5). They can
 sockets, load executables, read a console, or access a filesystem. This document is
 an implementation plan, not a claim that the following interfaces are available.
 
+The host operator can now use an interactive [serial kernel monitor](CONSOLE.md)
+for help and status. It runs in the kernel and does not give ring-3 programs console
+access or implement a userspace shell.
+
 ## First usable userspace boundary
 
 Build a small versioned syscall ABI with a `no_std` Rust userspace library. Keep
@@ -65,8 +69,8 @@ cannot gain rights; stale handles never authorize a replacement socket.
 
 The first administration interface should be a serial console with a small userspace
 shell: `help`, process/limit inspection, `net status`, and program launch. This works
-through a VPS provider's console before remote access is available. The kernel has
-console output today; input and an interactive shell still need implementation.
+through a VPS provider's console before remote access is available. The kernel now provides serial input and a read-only monitor. A userspace shell
+still requires the loader and syscall boundary.
 
 Implement in this order: validated user copies and stable ABI → console and loader →
 process-owned socket handles and quotas → readiness/wait → a small network application.

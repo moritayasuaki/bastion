@@ -35,3 +35,5 @@ uint8_t bastion_net_budget(uint64_t v_processed_525_);
 uint8_t bastion_net_tcp(uint64_t v_size_532_, uint64_t v_header_533_);
 uint8_t bastion_net_port(uint64_t v_port_549_);
 uint8_t bastion_net_payload(uint64_t v_size_558_);
+uint64_t bastion_console_action(uint64_t v_byte_565_, uint64_t v_length_566_, uint64_t v_discarding_567_);
+uint8_t bastion_console_budget(uint64_t v_processed_616_);

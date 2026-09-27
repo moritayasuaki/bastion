@@ -5,7 +5,7 @@ An experimental x86-64 kernel for process resource limits and security boundarie
 
 Bastion boots directly under QEMU or a compatible hypervisor. It includes isolated
 ring-3 processes, timer preemption, capability checks, memory/CPU quotas, a bounded
-virtio TCP/UDP stack with fixed socket buffers.
+virtio TCP/UDP stack with fixed socket buffers, and an interactive serial console.
 
 **Research prototype:** no SSH, filesystem, dynamic executable loader, persistent
 state, or provider-specific IP configuration. The policy proofs do not constitute
@@ -34,6 +34,7 @@ git clone https://github.com/moritayasuaki/bastion.git
 cd bastion
 cargo xtask check         # proofs, conformance, Rust tests, formatting and lints
 cargo xtask build         # creates dist/bastion.iso
+cargo xtask console       # interactive text console; type help
 cargo xtask network-test  # boots one VM and checks TCP and UDP
 ```
 
@@ -42,6 +43,9 @@ port forwards, 64 MB for BIOS and 128 MB for UEFI. The guest serves TCP and UDP 
 on port 9000. See the [network guide](docs/NETWORK.md) for kernel API and limits,
 and the [userspace interface plan](docs/USERSPACE.md) for process-owned sockets,
 resource quotas, console and loader work. Socket syscalls are not implemented yet.
+
+The [serial console guide](docs/CONSOLE.md) explains what a serial console is,
+the commands, and how to connect. Exit QEMU with Ctrl-A then X.
 
 For the embedded process-isolation boot tests:
 
@@ -69,8 +73,8 @@ local reports, and boot images are excluded from Git.
 
 ## Verification and licensing
 
-The project checks 35 Lean policy theorems, 32 Rust tests, and conformance corpora
-covering 16,716 executable-policy cases and 1,254 abstract-model cases. Network
+The project checks 39 Lean policy theorems, 37 Rust tests, and conformance corpora
+covering 20,577 executable-policy cases and 1,254 abstract-model cases. Network
 policy executes through Lean-generated C; TCP state and packet parsing use Rust.
 
 See [validation and reproduction](docs/VALIDATION.md), [Lean extraction](docs/EXTRACTION.md),

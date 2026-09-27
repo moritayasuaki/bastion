@@ -8,7 +8,7 @@ the guest. Build it with `cargo xtask build`.
 
 - x86-64 CPU with NX, a usable TSC, and PC-compatible PIC/PIT devices.
 - Custom ISO attachment and BIOS/UEFI boot, with Secure Boot disabled for this unsigned image.
-- A graphical or serial console; there is no SSH server.
+- A compatible COM1 serial console for interactive commands; framebuffer/VNC shows boot output only. There is no SSH server.
 - One active CPU. Additional CPUs are not started.
 - CPU RDRAND support for the network seed.
 - Legacy/transitional virtio-net for the current network driver.
@@ -23,7 +23,8 @@ a persistent boot disk are not implemented. The TCP/UDP demo uses QEMU's static
 1. Build the normal release ISO; the test ISO deliberately exits QEMU.
 2. Attach the release ISO through the hypervisor's custom-image workflow.
 3. Open its console and check for `ALL BOOT CHECKS PASSED`.
-4. Leave the ISO attached. Bastion runs from its boot image and does not install to disk.
+4. On the serial console, type `help`; see [CONSOLE.md](CONSOLE.md).
+5. Leave the ISO attached. Bastion runs from its boot image and does not install to disk.
 
 A hosted service still needs provider network configuration, a userspace interface,
 modern hardware support, a loader, storage, and capability-controlled user services.

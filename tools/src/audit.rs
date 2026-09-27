@@ -136,6 +136,8 @@ pub fn kernel(path: &Path) -> Result<()> {
         "bastion_net_ipv4",
         "bastion_net_udp",
         "bastion_net_budget",
+        "bastion_console_action",
+        "bastion_console_budget",
         "bastion_net_tcp",
         "bastion_net_port",
         "bastion_net_payload",

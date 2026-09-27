@@ -80,3 +80,10 @@ def main : IO Unit := do
     for proto in [0,1,6,17,255] do
       for version in [0,0x45,0x46] do
         emit "net_ipv4" [a,1500,0,64,proto,version] (truth (netIpv4 a 1500 0 64 proto version))
+  for byte in [0:257] do
+    for length in [0,1,63,64,18446744073709551615] do
+      for discarding in [0,1,2] do
+        emit "console_action" [byte.toUInt64,length,discarding]
+          (consoleAction byte.toUInt64 length discarding)
+  for n in [0,1,15,16,17,18446744073709551615] do
+    emit "console_budget" [n] (truth (consoleBudget n))

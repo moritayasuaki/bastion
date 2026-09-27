@@ -128,4 +128,22 @@ theorem zero_port_rejected : netPort 0 = false := by decide
 theorem outbound_datagram_bounded (size : UInt64) (h : netPayload size = true) :
     size ≤ 1200 := by simpa [netPayload] using h
 
+theorem console_append_bounded (byte length discarding : UInt64)
+    (h : consoleAction byte length discarding = 1) : length < 64 := by
+  unfold consoleAction bne at h
+  bv_decide
+
+theorem console_append_printable (byte length discarding : UInt64)
+    (h : consoleAction byte length discarding = 1) : 32 ≤ byte ∧ byte ≤ 126 := by
+  unfold consoleAction bne at h
+  bv_decide
+
+theorem rejected_line_cannot_append (byte length discarding : UInt64)
+    (h : discarding ≠ 0) : consoleAction byte length discarding ≠ 1 := by
+  unfold consoleAction bne
+  bv_decide
+
+theorem console_poll_bounded (n : UInt64) (h : consoleBudget n = true) : n < 16 := by
+  simpa [consoleBudget] using h
+
 end Bastion.Runtime

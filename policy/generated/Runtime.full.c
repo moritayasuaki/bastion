@@ -93,6 +93,10 @@ LEAN_EXPORT uint8_t bastion_net_port(uint64_t);
 LEAN_EXPORT lean_object* l_Bastion_Runtime_netPort___boxed(lean_object*);
 LEAN_EXPORT uint8_t bastion_net_payload(uint64_t);
 LEAN_EXPORT lean_object* l_Bastion_Runtime_netPayload___boxed(lean_object*);
+LEAN_EXPORT uint64_t bastion_console_action(uint64_t, uint64_t, uint64_t);
+LEAN_EXPORT lean_object* l_Bastion_Runtime_consoleAction___boxed(lean_object*, lean_object*, lean_object*);
+LEAN_EXPORT uint8_t bastion_console_budget(uint64_t);
+LEAN_EXPORT lean_object* l_Bastion_Runtime_consoleBudget___boxed(lean_object*);
 LEAN_EXPORT uint64_t bastion_abi_version(uint64_t v_x_1_){
 _start:
 {
@@ -1671,6 +1675,215 @@ lean_dec_ref(v_size_561_);
 v_res_563_ = bastion_net_payload(v_size_boxed_562_);
 v_r_564_ = lean_box(v_res_563_);
 return v_r_564_;
+}
+}
+LEAN_EXPORT uint64_t bastion_console_action(uint64_t v_byte_565_, uint64_t v_length_566_, uint64_t v_discarding_567_){
+_start:
+{
+uint8_t v___y_569_; uint64_t v___y_576_; uint8_t v___y_577_; uint64_t v___y_580_; uint8_t v___y_581_; uint8_t v___y_590_; uint64_t v___x_604_; uint8_t v___x_605_; 
+v___x_604_ = 13ULL;
+v___x_605_ = lean_uint64_dec_eq(v_byte_565_, v___x_604_);
+if (v___x_605_ == 0)
+{
+uint64_t v___x_606_; uint8_t v___x_607_; 
+v___x_606_ = 10ULL;
+v___x_607_ = lean_uint64_dec_eq(v_byte_565_, v___x_606_);
+v___y_590_ = v___x_607_;
+goto v___jp_589_;
+}
+else
+{
+v___y_590_ = v___x_605_;
+goto v___jp_589_;
+}
+v___jp_568_:
+{
+if (v___y_569_ == 0)
+{
+uint64_t v___x_570_; 
+v___x_570_ = 5ULL;
+return v___x_570_;
+}
+else
+{
+uint64_t v___x_571_; uint8_t v___x_572_; 
+v___x_571_ = 64ULL;
+v___x_572_ = lean_uint64_dec_lt(v_length_566_, v___x_571_);
+if (v___x_572_ == 0)
+{
+uint64_t v___x_573_; 
+v___x_573_ = 5ULL;
+return v___x_573_;
+}
+else
+{
+uint64_t v___x_574_; 
+v___x_574_ = 1ULL;
+return v___x_574_;
+}
+}
+}
+v___jp_575_:
+{
+if (v___y_577_ == 0)
+{
+return v___y_576_;
+}
+else
+{
+uint64_t v___x_578_; 
+v___x_578_ = 2ULL;
+return v___x_578_;
+}
+}
+v___jp_579_:
+{
+if (v___y_581_ == 0)
+{
+uint64_t v___x_582_; uint8_t v___x_583_; 
+v___x_582_ = 32ULL;
+v___x_583_ = lean_uint64_dec_le(v___x_582_, v_byte_565_);
+if (v___x_583_ == 0)
+{
+v___y_569_ = v___x_583_;
+goto v___jp_568_;
+}
+else
+{
+uint64_t v___x_584_; uint8_t v___x_585_; 
+v___x_584_ = 126ULL;
+v___x_585_ = lean_uint64_dec_le(v_byte_565_, v___x_584_);
+v___y_569_ = v___x_585_;
+goto v___jp_568_;
+}
+}
+else
+{
+uint8_t v___x_586_; 
+v___x_586_ = lean_uint64_dec_lt(v___y_580_, v_length_566_);
+if (v___x_586_ == 0)
+{
+v___y_576_ = v___y_580_;
+v___y_577_ = v___x_586_;
+goto v___jp_575_;
+}
+else
+{
+uint64_t v___x_587_; uint8_t v___x_588_; 
+v___x_587_ = 64ULL;
+v___x_588_ = lean_uint64_dec_le(v_length_566_, v___x_587_);
+v___y_576_ = v___y_580_;
+v___y_577_ = v___x_588_;
+goto v___jp_575_;
+}
+}
+}
+v___jp_589_:
+{
+if (v___y_590_ == 0)
+{
+uint64_t v___x_591_; uint8_t v___x_592_; 
+v___x_591_ = 3ULL;
+v___x_592_ = lean_uint64_dec_eq(v_byte_565_, v___x_591_);
+if (v___x_592_ == 0)
+{
+uint64_t v___x_593_; uint8_t v___x_594_; 
+v___x_593_ = 21ULL;
+v___x_594_ = lean_uint64_dec_eq(v_byte_565_, v___x_593_);
+if (v___x_594_ == 0)
+{
+uint64_t v___x_595_; uint8_t v___x_596_; 
+v___x_595_ = 0ULL;
+v___x_596_ = lean_uint64_dec_eq(v_discarding_567_, v___x_595_);
+if (v___x_596_ == 0)
+{
+return v___x_595_;
+}
+else
+{
+if (v___x_594_ == 0)
+{
+uint64_t v___x_597_; uint8_t v___x_598_; 
+v___x_597_ = 8ULL;
+v___x_598_ = lean_uint64_dec_eq(v_byte_565_, v___x_597_);
+if (v___x_598_ == 0)
+{
+uint64_t v___x_599_; uint8_t v___x_600_; 
+v___x_599_ = 127ULL;
+v___x_600_ = lean_uint64_dec_eq(v_byte_565_, v___x_599_);
+v___y_580_ = v___x_595_;
+v___y_581_ = v___x_600_;
+goto v___jp_579_;
+}
+else
+{
+v___y_580_ = v___x_595_;
+v___y_581_ = v___x_598_;
+goto v___jp_579_;
+}
+}
+else
+{
+return v___x_595_;
+}
+}
+}
+else
+{
+uint64_t v___x_601_; 
+v___x_601_ = 6ULL;
+return v___x_601_;
+}
+}
+else
+{
+uint64_t v___x_602_; 
+v___x_602_ = 4ULL;
+return v___x_602_;
+}
+}
+else
+{
+uint64_t v___x_603_; 
+v___x_603_ = 3ULL;
+return v___x_603_;
+}
+}
+}
+}
+LEAN_EXPORT lean_object* l_Bastion_Runtime_consoleAction___boxed(lean_object* v_byte_608_, lean_object* v_length_609_, lean_object* v_discarding_610_){
+_start:
+{
+uint64_t v_byte_boxed_611_; uint64_t v_length_boxed_612_; uint64_t v_discarding_boxed_613_; uint64_t v_res_614_; lean_object* v_r_615_; 
+v_byte_boxed_611_ = lean_unbox_uint64(v_byte_608_);
+lean_dec_ref(v_byte_608_);
+v_length_boxed_612_ = lean_unbox_uint64(v_length_609_);
+lean_dec_ref(v_length_609_);
+v_discarding_boxed_613_ = lean_unbox_uint64(v_discarding_610_);
+lean_dec_ref(v_discarding_610_);
+v_res_614_ = bastion_console_action(v_byte_boxed_611_, v_length_boxed_612_, v_discarding_boxed_613_);
+v_r_615_ = lean_box_uint64(v_res_614_);
+return v_r_615_;
+}
+}
+LEAN_EXPORT uint8_t bastion_console_budget(uint64_t v_processed_616_){
+_start:
+{
+uint64_t v___x_617_; uint8_t v___x_618_; 
+v___x_617_ = 16ULL;
+v___x_618_ = lean_uint64_dec_lt(v_processed_616_, v___x_617_);
+return v___x_618_;
+}
+}
+LEAN_EXPORT lean_object* l_Bastion_Runtime_consoleBudget___boxed(lean_object* v_processed_619_){
+_start:
+{
+uint64_t v_processed_boxed_620_; uint8_t v_res_621_; lean_object* v_r_622_; 
+v_processed_boxed_620_ = lean_unbox_uint64(v_processed_619_);
+lean_dec_ref(v_processed_619_);
+v_res_621_ = bastion_console_budget(v_processed_boxed_620_);
+v_r_622_ = lean_box(v_res_621_);
+return v_r_622_;
 }
 }
 lean_object* initialize_Init(uint8_t builtin);

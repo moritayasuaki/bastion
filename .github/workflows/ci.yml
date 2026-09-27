@@ -43,3 +43,8 @@ jobs:
           cargo xtask build
           cargo xtask network-test
           cargo xtask network-test --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd
+      - name: Interactive serial console
+        run: |
+          cargo xtask console-test
+          cargo xtask console-test --no-network
+          cargo xtask console-test --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd

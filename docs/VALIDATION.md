@@ -6,14 +6,14 @@ Run the complete source checks:
 cargo xtask check
 ```
 
-This checks 35 Lean theorems, regenerates and compares the committed C artifacts,
-executes 32 Rust tests, and checks formatting and Clippy for host and bare-metal
-code. The policy object audit requires all 34 scalar exports and no undefined
-symbols or Lean heap runtime. The boot image links 32 policy symbols.
+This checks 39 Lean theorems, regenerates and compares the committed C artifacts,
+executes 37 Rust tests, and checks formatting and Clippy for host and bare-metal
+code. The policy object audit requires all 36 scalar exports and no undefined
+symbols or Lean heap runtime. The boot image links 35 policy symbols.
 
 | Corpus | Cases | Reference |
 |---|---:|---|
-| Executable policy | 16,716 | Lean runtime definitions across all 34 exports |
+| Executable policy | 20,577 | Lean runtime definitions across all 36 exports |
 | Abstract policy | 1,254 | Natural-number resource/capability model |
 
 The five network tests cover two virtual Ethernet peers: UDP boundaries, truncation,
@@ -21,6 +21,10 @@ full queues, checksums, unbound ports, TCP active/passive open, a dropped data s
 and retransmission, a held receive window, partial streams, half-close and reconnect,
 malformed headers, every truncation of a valid minimum TCP frame, and socket capacity.
 These are integration tests, not exhaustive protocol verification.
+
+Five console unit tests cover line editing, rejection and recovery, sustained input,
+and output-queue backpressure. The serial harness additionally verifies commands,
+editing and continued timer progress through the QEMU UART.
 
 ## Native boot and traffic
 
@@ -30,9 +34,11 @@ cargo xtask smoke --memory 64M
 cargo xtask smoke --machine q35
 cargo xtask build
 cargo xtask network-test
+cargo xtask console-test
+cargo xtask console-test --no-network
 ```
 
-Add `--uefi CODE --uefi-vars VARS` to `smoke` or `network-test` for UEFI.
+Add `--uefi CODE --uefi-vars VARS` to `smoke`, `network-test` or `console-test` for UEFI.
 See [NETWORK.md](NETWORK.md) for firmware examples. CI runs the same source checks,
 BIOS/UEFI isolation tests and TCP/UDP traffic tests on Ubuntu 24.04.
 

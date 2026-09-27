@@ -169,4 +169,20 @@ def netPort (port : UInt64) : Bool := port > 0 && port ≤ 65535
 @[export bastion_net_payload]
 def netPayload (size : UInt64) : Bool := size ≤ 1200
 
+-- Serial input actions: 0 ignore, 1 append, 2 erase, 3 submit, 4 cancel,
+-- 5 reject the whole line, 6 clear. Invalid/overlong lines cannot be truncated
+-- into executable commands. Ctrl-C/Ctrl-U or a line ending recover input.
+@[export bastion_console_action]
+def consoleAction (byte length discarding : UInt64) : UInt64 :=
+  if byte == 13 || byte == 10 then 3
+  else if byte == 3 then 4
+  else if byte == 21 then 6
+  else if discarding != 0 then 0
+  else if byte == 8 || byte == 127 then (if length > 0 && length ≤ 64 then 2 else 0)
+  else if 32 ≤ byte && byte ≤ 126 && length < 64 then 1
+  else 5
+
+@[export bastion_console_budget]
+def consoleBudget (processed : UInt64) : Bool := processed < 16
+
 end Bastion.Runtime

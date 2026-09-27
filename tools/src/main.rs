@@ -1,6 +1,7 @@
 //! Host tools for the Lean/C/Rust kernel. Invoke with cargo xtask.
 mod audit;
 mod build;
+mod console;
 mod extract;
 mod smoke;
 
@@ -90,6 +91,11 @@ fn dispatch() -> Result<()> {
             Options::parse(args, &[], &[])?;
             build::check(root)?;
         }
+        "console" | "console-test" => console::console(
+            root,
+            &Options::parse(args, &["--no-network"], &["--iso", "--uefi", "--uefi-vars"])?,
+            action == "console-test",
+        )?,
         "network-test" => {
             run(Command::new("cargo")
                 .args(["run", "--locked", "--package", "bastion-lab", "--"])
@@ -134,6 +140,8 @@ fn dispatch() -> Result<()> {
              cargo xtask smoke [--iso ISO] [--machine pc|q35] [--memory 128M]\n\
              [--uefi CODE --uefi-vars VARS] [--log FILE]\n\
              cargo xtask audit [--object ELF] [--kernel ELF]\n\
+             cargo xtask console [--iso ISO] [--no-network] [--uefi CODE --uefi-vars VARS]\n\
+             cargo xtask console-test [same options as console]\n\
              cargo xtask network-test [--iso ISO] [--uefi CODE --uefi-vars VARS] [--hold-seconds N]"
         ),
         _ => return Err(format!("Unknown command: {action}; use cargo xtask help").into()),

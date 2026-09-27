@@ -35,6 +35,8 @@ mod ffi {
         pub fn bastion_net_tcp(a0: u64, a1: u64) -> u8;
         pub fn bastion_net_port(a0: u64) -> u8;
         pub fn bastion_net_payload(a0: u64) -> u8;
+        pub fn bastion_console_action(a0: u64, a1: u64, a2: u64) -> u64;
+        pub fn bastion_console_budget(a0: u64) -> u8;
     }
 }
 #[inline]
@@ -206,4 +208,14 @@ pub fn net_port(a0: u64) -> u8 {
 pub fn net_payload(a0: u64) -> u8 {
     // SAFETY: the generated ABI accepts all values of these integer types.
     unsafe { ffi::bastion_net_payload(a0) }
+}
+#[inline]
+pub fn console_action(a0: u64, a1: u64, a2: u64) -> u64 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_console_action(a0, a1, a2) }
+}
+#[inline]
+pub fn console_budget(a0: u64) -> u8 {
+    // SAFETY: the generated ABI accepts all values of these integer types.
+    unsafe { ffi::bastion_console_budget(a0) }
 }

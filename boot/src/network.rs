@@ -417,3 +417,20 @@ impl net::Device for Driver {
         Some(Transmit { driver: self, id })
     }
 }
+
+pub struct Status {
+    pub tcp: tcp::State,
+    pub received_bytes: usize,
+    pub queued_bytes: usize,
+}
+/// Called by the console on the boot CPU, with interrupts masked.
+pub unsafe fn status() -> Option<Status> {
+    DEVICE.as_ref()?;
+    let (_, handle) = HANDLES?;
+    let socket = STACK.as_mut()?.tcp(handle).ok()?;
+    Some(Status {
+        tcp: socket.state(),
+        received_bytes: socket.recv_queue(),
+        queued_bytes: socket.send_queue(),
+    })
+}

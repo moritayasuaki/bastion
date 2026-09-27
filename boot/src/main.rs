@@ -12,6 +12,7 @@ use core::{
 };
 mod console;
 mod network;
+mod shell;
 global_asm!(include_str!("entry.S"));
 
 macro_rules! log { ($($arg:tt)*) => { console::print(format_args!($($arg)*)); }; }
@@ -601,6 +602,9 @@ unsafe extern "C" fn trap(frame: &Frame) -> *const Frame {
         #[cfg(feature = "qemu-test")]
         asm!("out dx, eax",in("dx") 0xf4u16,in("eax") if ok {0x10u32} else {0x11u32},options(nomem,nostack));
     }
+    if frame.vector == 32 && s.passed {
+        shell::poll(s);
+    }
     select(s)
 }
 
@@ -609,6 +613,7 @@ fn panic(info: &PanicInfo) -> ! {
     unsafe {
         asm!("cli", options(nomem, nostack));
     }
+    console::emergency_mode();
     log!("FAIL: {}\n", info);
     #[cfg(feature = "qemu-test")]
     unsafe {

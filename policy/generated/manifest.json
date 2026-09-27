@@ -1,8 +1,8 @@
 {
   "lean_version": "4.32.1",
-  "source_sha256": "2e78c398299de25b5f7cb7e372fe86d99eedb2d828874c120a5bc7d06d6f583d",
-  "full_c_sha256": "438f676c2f992c59308c173bdcdfe2277e2bd46e887fc871141ffc58a6cf3dbf",
-  "freestanding_c_sha256": "04df301e4e4cdae66ec8a97ce4f2d6273ed66dd17446c3724983e405ff333556",
+  "source_sha256": "157efb1c4e6e6fcb6c4045c842e5097e18f971d216b4702644f803f156a8d3a4",
+  "full_c_sha256": "f2eee8cca7c30ee00df7cbee752b11ca92604f6a462dc1155f035e8b018d60f3",
+  "freestanding_c_sha256": "20df1714facb7b54fb8a1602e812d37ea928f84ce6ba5944029e95440f6eb2ae",
   "lean_header_sha256": "22eed50aa703c4403010fabc12a7231ffa34dc979bd59ca1bfbac13c29a1dad2",
   "exports": [
     "bastion_abi_version",
@@ -38,7 +38,9 @@
     "bastion_net_budget",
     "bastion_net_tcp",
     "bastion_net_port",
-    "bastion_net_payload"
+    "bastion_net_payload",
+    "bastion_console_action",
+    "bastion_console_budget"
   ],
   "reachable_functions": [
     "bastion_abi_version",
@@ -74,7 +76,9 @@
     "bastion_net_budget",
     "bastion_net_tcp",
     "bastion_net_port",
-    "bastion_net_payload"
+    "bastion_net_payload",
+    "bastion_console_action",
+    "bastion_console_budget"
   ],
   "scalar_primitives": [
     "lean_uint64_add",
@@ -92,10 +96,10 @@
   "runtime": "Scalar primitives only; no allocation, reference counting, or module initialization.",
   "files_sha256": {
     "LEAN-LICENSE": "8b28515ffffc5c0fe2807d8ae3735b00b324d9b7ce807dd63ff6ac8922fbce7e",
-    "Runtime.full.c": "438f676c2f992c59308c173bdcdfe2277e2bd46e887fc871141ffc58a6cf3dbf",
-    "bindings.rs": "6e8bd2d4b7e314c99f5f7374c92d7ea0fda5717351c40bf6e5bb6e22d010705f",
-    "policy.c": "04df301e4e4cdae66ec8a97ce4f2d6273ed66dd17446c3724983e405ff333556",
-    "policy.h": "9b5175825aca4dc6437607514bc7986a35fc2ae32b32bb3f6ace5f489a349fb0",
+    "Runtime.full.c": "f2eee8cca7c30ee00df7cbee752b11ca92604f6a462dc1155f035e8b018d60f3",
+    "bindings.rs": "b1f746b523613832d75ff01d7a0d149aeebc7ab6b880be3c935056c46af24028",
+    "policy.c": "20df1714facb7b54fb8a1602e812d37ea928f84ce6ba5944029e95440f6eb2ae",
+    "policy.h": "e61c9244ce77ce50bf34b4f45ebd35815f3fff579305984d107be4578aa1bd58",
     "scalars.h": "048651552e2f59842e819f07ab2861f8d9994ec375c313251f793babbba057d6"
   }
 }

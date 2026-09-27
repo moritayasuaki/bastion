@@ -8,6 +8,7 @@ pub const MAX_PROCESSES: usize = 8;
 pub const MAX_CAPABILITIES: usize = 8;
 const _: () = assert!(MAX_PROCESSES == 8 && MAX_CAPABILITIES == 8);
 pub use bastion_policy as decisions;
+pub mod console;
 pub mod net;
 
 /// Compatibility helpers backed by the C compiled from Bastion.Runtime.
@@ -294,6 +295,10 @@ impl Kernel {
 
     pub fn snapshot(&self, id: ProcessId) -> Result<Snapshot, Error> {
         Ok(self.processes[self.index(id)?].as_ref().unwrap().snapshot())
+    }
+
+    pub const fn page_capacity(&self) -> u64 {
+        self.page_capacity
     }
 
     pub const fn used_pages(&self) -> u64 {
