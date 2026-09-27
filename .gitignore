@@ -12,10 +12,9 @@
 *.elf
 .DS_Store
 
-# Local credentials and private relay provisioning
+# Local credentials
 .env
 .env.*
 !.env.example
 *.pem
 *.key
-relay.bin

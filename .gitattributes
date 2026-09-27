@@ -3,6 +3,5 @@
 *.png binary
 # Preserve compiler output and upstream notices byte-for-byte.
 policy/generated/* -text -whitespace linguist-generated=true
-crypto/vendor/psiv/* -text -whitespace
 docs/licenses/* -text -whitespace
 tests/data/*.csv linguist-generated=true

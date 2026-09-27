@@ -44,17 +44,16 @@ fn extracted_c_matches_lean_across_every_export() {
             "net_ipv4" => p::net_ipv4(a, b, c, d, e, f).into(),
             "net_udp" => p::net_udp(a, b, c, d).into(),
             "net_budget" => p::net_budget(a).into(),
-            "relay_ingress" => p::relay_ingress(a, b, c, d, e, f).into(),
-            "field_share" => p::field_share(a, b, c, d, e),
-            "field_reconstruct" => p::field_reconstruct(a, b, c, d, e),
-            "unique_step" => p::unique_step(a, b, c),
+            "net_tcp" => p::net_tcp(a, b).into(),
+            "net_port" => p::net_port(a).into(),
+            "net_payload" => p::net_payload(a).into(),
             other => panic!("unknown exported operation {other}"),
         };
         assert_eq!(actual, v[6], "{line}");
         covered.insert(fields[0]);
         count += 1;
     }
-    assert_eq!(covered.len(), 35);
+    assert_eq!(covered.len(), 34);
     assert!(count > 10_000, "truncated conformance corpus: {count}");
 }
 

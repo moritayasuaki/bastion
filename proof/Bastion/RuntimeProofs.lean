@@ -115,20 +115,17 @@ theorem fragmented_packet_rejected (a b ttl proto ver : UInt64)
     netIpv4 a b fragment ttl proto ver = false := by
   simp [netIpv4, h, h']
 
-theorem replay_rejected (relay role opcode seq previous size : UInt64)
-    (h : seq ≤ previous) : relayIngress relay role opcode seq previous size = false := by
-  unfold relayIngress
-  bv_decide
-
 theorem bounded_poll (n : UInt64) (h : netBudget n = true) : n < 8 := by
   simpa [netBudget] using h
 
-theorem ambiguity_absorbing (equal confirmed : UInt64) : uniqueStep 2 equal confirmed = 2 := by
-  simp [uniqueStep]
-
-theorem unconfirmed_preserves (state equal : UInt64) (h : state < 2) :
-    uniqueStep state equal 0 = state := by
-  unfold uniqueStep
+theorem tcp_header_within_segment (size header : UInt64)
+    (h : netTcp size header = true) : 20 ≤ header ∧ header ≤ size := by
+  unfold netTcp at h
   bv_decide
+
+theorem zero_port_rejected : netPort 0 = false := by decide
+
+theorem outbound_datagram_bounded (size : UInt64) (h : netPayload size = true) :
+    size ≤ 1200 := by simpa [netPayload] using h
 
 end Bastion.Runtime

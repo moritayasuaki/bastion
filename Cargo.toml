@@ -12,11 +12,11 @@ path = "src/lib.rs"
 
 [dependencies]
 bastion-policy = { path = "policy" }
-bastion-crypto = { path = "crypto" }
+smoltcp = { version = "=0.14.0", default-features = false, features = ["medium-ethernet", "proto-ipv4", "socket-tcp", "socket-udp"] }
 
 [profile.release]
 panic = "abort"
 
 [workspace]
-members = [".", "policy", "crypto", "tools/lab", "tools", "tools/integrity"]
+members = [".", "policy", "tools/lab", "tools", "tools/integrity"]
 exclude = ["boot"]

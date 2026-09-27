@@ -38,8 +38,8 @@ jobs:
           cargo xtask build --test
           cargo xtask smoke --memory 64M
           cargo xtask smoke --machine q35 --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd
-      - name: Eight-relay network checks
+      - name: TCP and UDP network checks
         run: |
           cargo xtask build
-          cargo xtask relay-demo
-          cargo xtask relay-demo --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd
+          cargo xtask network-test
+          cargo xtask network-test --uefi /usr/share/OVMF/OVMF_CODE_4M.fd --uefi-vars /usr/share/OVMF/OVMF_VARS_4M.fd

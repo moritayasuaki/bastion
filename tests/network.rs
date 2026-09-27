@@ -1,275 +1,301 @@
-use bastion_core::{
-    decisions as p,
-    net::{self, MAX_FRAME, Stack},
-    relay::{self, BODY, Config, PACKET, Relay, SESSION_TICKS},
-};
-const GUEST: Stack = Stack {
-    mac: [2, 0, 0, 0, 0, 1],
-    ip: [10, 0, 2, 15],
-};
-fn fix_ip(frame: &mut [u8]) {
-    frame[24..26].fill(0);
-    let c = net::checksum(&frame[14..34]);
-    frame[24..26].copy_from_slice(&c.to_be_bytes());
+use bastion_core::net::*;
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+
+#[derive(Default)]
+struct Link {
+    frames: VecDeque<Vec<u8>>,
+    drop_data: bool,
+    lost: usize,
 }
-fn frame(payload: &[u8]) -> Vec<u8> {
-    let mut f = vec![0; 42 + payload.len()];
-    f[..6].copy_from_slice(&GUEST.mac);
-    f[6..12].copy_from_slice(&[2, 0, 0, 0, 0, 2]);
-    f[12..14].copy_from_slice(&[8, 0]);
+struct Wire {
+    rx: Rc<RefCell<Link>>,
+    tx: Rc<RefCell<Link>>,
+}
+struct Received(Vec<u8>);
+struct Sent(Rc<RefCell<Link>>);
+impl RxToken for Received {
+    fn consume<R, F: FnOnce(&[u8]) -> R>(self, f: F) -> R {
+        f(&self.0)
+    }
+}
+impl TxToken for Sent {
+    fn consume<R, F: FnOnce(&mut [u8]) -> R>(self, n: usize, f: F) -> R {
+        let mut bytes = vec![0; n];
+        let result = f(&mut bytes);
+        let mut link = self.0.borrow_mut();
+        let tcp_data = bytes.len() >= 54 && bytes[23] == 6 && bytes[47] & 8 != 0;
+        if link.drop_data && tcp_data {
+            link.drop_data = false;
+            link.lost += 1;
+        } else {
+            link.frames.push_back(bytes);
+        }
+        result
+    }
+}
+impl Device for Wire {
+    type RxToken<'a> = Received;
+    type TxToken<'a> = Sent;
+    fn capabilities(&self) -> DeviceCapabilities {
+        let mut c = DeviceCapabilities::default();
+        c.medium = Medium::Ethernet;
+        c.max_transmission_unit = MAX_FRAME;
+        c
+    }
+    fn receive(&mut self, _: Instant) -> Option<(Received, Sent)> {
+        // A rejected frame ends this ingress pass, so malformed input is bounded.
+        let bytes = self.rx.borrow_mut().frames.pop_front()?;
+        Some((Received(bytes), Sent(self.tx.clone())))
+    }
+    fn transmit(&mut self, _: Instant) -> Option<Sent> {
+        Some(Sent(self.tx.clone()))
+    }
+}
+fn wires() -> (Wire, Wire) {
+    let a = Rc::new(RefCell::new(Link::default()));
+    let b = Rc::new(RefCell::new(Link::default()));
+    (
+        Wire {
+            rx: a.clone(),
+            tx: b.clone(),
+        },
+        Wire { rx: b, tx: a },
+    )
+}
+struct Buffers {
+    ur: [u8; 2400],
+    ut: [u8; 2400],
+    mr: [udp::PacketMetadata; 2],
+    mt: [udp::PacketMetadata; 2],
+    tr: [u8; 256],
+    tt: [u8; 256],
+}
+impl Buffers {
+    fn new() -> Self {
+        Self {
+            ur: [0; 2400],
+            ut: [0; 2400],
+            mr: [udp::PacketMetadata::EMPTY; 2],
+            mt: [udp::PacketMetadata::EMPTY; 2],
+            tr: [0; 256],
+            tt: [0; 256],
+        }
+    }
+    fn stack<'a>(
+        &'a mut self,
+        wire: &mut Wire,
+        n: u8,
+        storage: &'a mut [SocketStorage<'a>],
+    ) -> (Stack<'a>, SocketHandle, SocketHandle) {
+        let mut s = Stack::new(wire, [2, 0, 0, 0, 0, n], [10, 0, 2, n], n.into(), storage).unwrap();
+        let u = s
+            .add_udp(
+                udp::PacketBuffer::new(&mut self.mr[..], &mut self.ur[..]),
+                udp::PacketBuffer::new(&mut self.mt[..], &mut self.ut[..]),
+            )
+            .unwrap();
+        let t = s
+            .add_tcp(
+                tcp::SocketBuffer::new(&mut self.tr[..]),
+                tcp::SocketBuffer::new(&mut self.tt[..]),
+            )
+            .unwrap();
+        (s, u, t)
+    }
+}
+fn endpoint(n: u8) -> IpEndpoint {
+    (Ipv4Address::new(10, 0, 2, n), ECHO_PORT).into()
+}
+
+#[test]
+fn udp_bidirectional_limits_backpressure_and_truncation() {
+    let (mut a, mut b) = wires();
+    let (mut ab, mut bb) = (Buffers::new(), Buffers::new());
+    let mut xs = [const { SocketStorage::EMPTY }; 2];
+    let mut ys = [const { SocketStorage::EMPTY }; 2];
+    let (mut x, u, t) = ab.stack(&mut a, 15, &mut xs);
+    let (mut y, v, _) = bb.stack(&mut b, 16, &mut ys);
+    assert_eq!(x.udp_bind(t, ECHO_PORT), Err(Error::InvalidHandle));
+    assert_eq!(x.udp_bind(u, 0), Err(Error::InvalidAddress));
+    x.udp_bind(u, ECHO_PORT).unwrap();
+    y.udp_bind(v, ECHO_PORT).unwrap();
+    assert_eq!(
+        x.udp_send_to(u, &[0; 1201], endpoint(16)),
+        Err(Error::MessageTooLarge)
+    );
+    x.udp_send_to(u, &[1; 1200], endpoint(16)).unwrap();
+    x.udp_send_to(u, &[], endpoint(16)).unwrap();
+    assert_eq!(x.udp_send_to(u, &[2], endpoint(16)), Err(Error::WouldBlock));
+    for now in 0..10 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    let mut buf = [0; 1200];
+    assert_eq!(y.udp_recv_from(v, &mut buf), Ok((1200, endpoint(15))));
+    assert_eq!(buf, [1; 1200]);
+    assert_eq!(y.udp_recv_from(v, &mut buf), Ok((0, endpoint(15))));
+    assert_eq!(y.udp_recv_from(v, &mut buf), Err(Error::WouldBlock));
+    y.udp_send_to(v, b"response", endpoint(15)).unwrap();
+    for now in 10..20 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(x.udp_recv_from(u, &mut [0; 2]), Err(Error::MessageTooLarge));
+    assert_eq!(x.udp_recv_from(u, &mut buf), Err(Error::WouldBlock));
+    x.udp_close(u).unwrap();
+    assert_eq!(
+        x.udp_send_to(u, b"closed", endpoint(16)),
+        Err(Error::InvalidAddress)
+    );
+    x.udp_bind(u, ECHO_PORT).unwrap();
+}
+
+#[test]
+fn tcp_connect_retransmit_flow_control_half_close_and_relisten() {
+    let (mut a, mut b) = wires();
+    let (mut ab, mut bb) = (Buffers::new(), Buffers::new());
+    let mut xs = [const { SocketStorage::EMPTY }; 2];
+    let mut ys = [const { SocketStorage::EMPTY }; 2];
+    let (mut x, _, t) = ab.stack(&mut a, 15, &mut xs);
+    let (mut y, _, v) = bb.stack(&mut b, 16, &mut ys);
+    y.tcp_listen(v, ECHO_PORT).unwrap();
+    x.tcp_connect(t, endpoint(16), 50000).unwrap();
+    for now in 0..20 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(x.tcp(t).unwrap().state(), tcp::State::Established);
+    assert_eq!(y.tcp(v).unwrap().state(), tcp::State::Established);
+    assert_eq!(x.tcp_recv(t, &mut [0; 1]), Err(Error::WouldBlock));
+    a.tx.borrow_mut().drop_data = true;
+    let input: Vec<u8> = (0..2048).map(|n| n as u8).collect();
+    let mut sent = 0;
+    let mut received = Vec::new();
+    for now in 20..10_000 {
+        if sent < input.len() {
+            match x.tcp_send(t, &input[sent..]) {
+                Ok(n) => sent += n,
+                Err(Error::WouldBlock) => {}
+                other => panic!("{other:?}"),
+            }
+        }
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+        // Hold the receive window closed long enough to exercise backpressure.
+        if now > 1500 {
+            let mut buf = [0; 73];
+            if let Ok(n) = y.tcp_recv(v, &mut buf) {
+                received.extend_from_slice(&buf[..n]);
+            }
+        }
+        if received.len() == input.len() {
+            break;
+        }
+    }
+    assert_eq!(a.tx.borrow().lost, 1);
+    assert_eq!(received, input);
+    x.tcp_close(t).unwrap();
+    for now in 10_000..10_100 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(y.tcp_recv(v, &mut [0; 16]), Ok(0));
+    y.tcp_send(v, b"after FIN").unwrap();
+    y.tcp_close(v).unwrap();
+    for now in 10_100..10_200 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    let mut reply = [0; 16];
+    assert_eq!(x.tcp_recv(t, &mut reply), Ok(9));
+    assert_eq!(&reply[..9], b"after FIN");
+    assert_eq!(x.tcp_recv(t, &mut reply), Ok(0));
+    for now in 10_200..40_500 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(y.tcp(v).unwrap().state(), tcp::State::Closed);
+    y.tcp_listen(v, ECHO_PORT).unwrap();
+    x.tcp_connect(t, endpoint(16), 50001).unwrap();
+    for now in 40_500..40_520 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(x.tcp(t).unwrap().state(), tcp::State::Established);
+}
+
+#[test]
+fn malformed_headers_fragments_and_all_truncations_are_rejected() {
+    let mut f = [0; 54];
+    f[12..14].copy_from_slice(&0x0800u16.to_be_bytes());
     f[14] = 0x45;
-    f[16..18].copy_from_slice(&((28 + payload.len()) as u16).to_be_bytes());
+    f[16..18].copy_from_slice(&40u16.to_be_bytes());
     f[22] = 64;
-    f[23] = 17;
-    f[26..30].copy_from_slice(&[10, 0, 2, 2]);
-    f[30..34].copy_from_slice(&GUEST.ip);
-    f[34..36].copy_from_slice(&40000u16.to_be_bytes());
-    f[36..38].copy_from_slice(&9000u16.to_be_bytes());
-    f[38..40].copy_from_slice(&((8 + payload.len()) as u16).to_be_bytes());
-    f[42..].copy_from_slice(payload);
-    fix_ip(&mut f);
-    f
-}
-fn echo(f: &[u8]) -> Option<Vec<u8>> {
-    let mut out = [0; MAX_FRAME];
-    let n = GUEST.receive(f, &mut out, |_, p, o| {
-        o[..p.len()].copy_from_slice(p);
-        Some(p.len())
-    })?;
-    Some(out[..n].to_vec())
-}
-#[test]
-fn udp_roundtrip_lengths_checksums_and_all_truncations() {
-    for n in [0, 1, 2, 31, 512, 1200] {
-        let payload = vec![0x81; n];
-        let mut f = frame(&payload);
-        f[34..36].copy_from_slice(&9000u16.to_be_bytes());
-        let reply = echo(&f).unwrap();
-        assert_eq!(&reply[42..], payload);
-        assert_eq!(net::checksum(&reply[14..34]), 0);
-        for end in 0..f.len() {
-            assert!(echo(&f[..end]).is_none());
-        }
-        // Validate the emitted nonzero UDP checksum through an independent peer instance.
-        let peer = Stack {
-            mac: f[6..12].try_into().unwrap(),
-            ip: [10, 0, 2, 2],
-        };
-        let mut out = [0; MAX_FRAME];
-        assert_eq!(
-            peer.receive(&reply, &mut out, |_, p, o| {
-                assert_eq!(p, payload);
-                o[..p.len()].copy_from_slice(p);
-                Some(p.len())
-            }),
-            Some(reply.len())
-        );
-        let mut incoming = reply.clone();
-        incoming[40] ^= 1;
-        assert!(
-            peer.receive(&incoming, &mut out, |_, _, _| Some(0))
-                .is_none()
-        );
+    f[23] = 6;
+    f[46] = 0x50;
+    assert!(admit(&f));
+    for n in 0..f.len() {
+        assert!(!admit(&f[..n]), "truncated at {n}");
     }
-    assert!(echo(&frame(&[0; 1201])).is_none());
-}
-#[test]
-fn malformed_network_headers_never_reach_service() {
-    let base = frame(b"hello");
-    for (offset, value) in [
-        (14, 0x46),
-        (14, 0x65),
-        (20, 0x20),
-        (20, 0x80),
-        (21, 1),
-        (22, 0),
-        (23, 6),
-        (30, 11),
-        (26, 224),
-        (38, 0xff),
-        (39, 7),
-        (36, 1),
-    ] {
-        let mut f = base.clone();
-        f[offset] = value;
-        fix_ip(&mut f);
-        assert!(echo(&f).is_none(), "offset {offset}");
+    for header in [0, 4, 16, 24, 60] {
+        f[46] = header << 2;
+        assert!(!admit(&f));
     }
-    let mut f = base.clone();
-    f[24] ^= 1;
-    assert!(echo(&f).is_none());
-    f = base;
-    f[40..42].copy_from_slice(&1u16.to_be_bytes());
-    assert!(echo(&f).is_none());
-}
-#[test]
-fn arp_answers_only_the_local_address() {
-    let mut f = [0; 42];
-    f[..6].fill(255);
-    f[6..12].copy_from_slice(&[2, 0, 0, 0, 0, 2]);
-    f[12..22].copy_from_slice(&[8, 6, 0, 1, 8, 0, 6, 4, 0, 1]);
-    f[22..28].copy_from_slice(&[2, 0, 0, 0, 0, 2]);
-    f[28..32].copy_from_slice(&[10, 0, 2, 2]);
-    f[38..42].copy_from_slice(&GUEST.ip);
-    let reply = echo(&f).unwrap();
-    assert_eq!(&reply[20..22], &[0, 2]);
-    assert_eq!(&reply[22..28], &GUEST.mac);
-    f[41] = 16;
-    assert!(echo(&f).is_none());
-}
-fn config() -> Config {
-    Config {
-        id: 1,
-        epoch: [9; 16],
-        alice: [1; 32],
-        bob: [2; 32],
+    f[46] = 0x50;
+    for frag in [1u16, 0x2000, 0x8000] {
+        f[20..22].copy_from_slice(&frag.to_be_bytes());
+        assert!(!admit(&f));
     }
+    assert!(!admit(&[0; MAX_FRAME + 1]));
 }
-fn body(c: &Config, sid: [u8; 16]) -> [u8; BODY] {
-    let mut b = [0; BODY];
-    b[..96].copy_from_slice(&relay::transcript(c.epoch, sid, [8; 16]));
-    b
-}
-#[allow(clippy::too_many_arguments)]
-fn request(
-    r: &mut Relay,
-    c: &Config,
-    role: u8,
-    op: u8,
-    sid: [u8; 16],
-    seq: u64,
-    b: &[u8],
-    now: u64,
-) -> Option<Vec<u8>> {
-    let mut wire = [0; PACKET];
-    let n = relay::encode(c, role, op, sid, seq, b, &mut wire)?;
-    let mut out = [0; PACKET];
-    let n = r.handle(&wire[..n], now, &mut out)?;
-    Some(out[..n].to_vec())
-}
+
 #[test]
-fn relay_authentication_identity_replay_and_conflicts() {
-    let c = config();
-    let mut r = Relay::new(c.clone());
-    let sid = [3; 16];
-    let b = body(&c, sid);
-    assert!(request(&mut r, &c, 1, 1, sid, 1, &b, 0).is_some());
-    let reply = request(&mut r, &c, 2, 2, sid, 1, &[], 1).unwrap();
-    let mut plain = [0; BODY];
-    assert_eq!(
-        relay::decode_response(&c, 2, 130, sid, 1, &reply, &mut plain),
-        Some(BODY)
+fn checksum_corruption_and_unbound_udp_port_do_not_deliver_data() {
+    let (mut a, mut b) = wires();
+    let (mut ab, mut bb) = (Buffers::new(), Buffers::new());
+    let mut xs = [const { SocketStorage::EMPTY }; 2];
+    let mut ys = [const { SocketStorage::EMPTY }; 2];
+    let (mut x, u, _) = ab.stack(&mut a, 15, &mut xs);
+    let (mut y, v, _) = bb.stack(&mut b, 16, &mut ys);
+    x.udp_bind(u, ECHO_PORT).unwrap();
+    y.udp_bind(v, ECHO_PORT).unwrap();
+    x.udp_send_to(u, b"warmup", endpoint(16)).unwrap();
+    for now in 0..10 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert!(y.udp_recv_from(v, &mut [0; 16]).is_ok());
+    for offset in [24, 40, 42] {
+        // IPv4 checksum, UDP checksum, payload
+        x.udp_send_to(u, b"damaged", endpoint(16)).unwrap();
+        x.poll(10, &mut a);
+        let mut link = b.rx.borrow_mut();
+        let frame = link.frames.back_mut().unwrap();
+        assert_eq!(frame[23], 17);
+        frame[offset] ^= 1;
+        drop(link);
+        y.poll(10, &mut b);
+        assert_eq!(y.udp_recv_from(v, &mut [0; 16]), Err(Error::WouldBlock));
+    }
+    let mut unbound = endpoint(16);
+    unbound.port = 9001;
+    x.udp_send_to(u, b"unbound", unbound).unwrap();
+    for now in 11..20 {
+        x.poll(now, &mut a);
+        y.poll(now, &mut b);
+    }
+    assert_eq!(y.udp_recv_from(v, &mut [0; 16]), Err(Error::WouldBlock));
+}
+
+#[test]
+fn fixed_socket_capacity_returns_error_without_allocating() {
+    let (mut a, _) = wires();
+    let mut ab = Buffers::new();
+    let mut storage = [const { SocketStorage::EMPTY }; 2];
+    let (mut x, _, _) = ab.stack(&mut a, 15, &mut storage);
+    let extra = x.add_tcp(
+        tcp::SocketBuffer::new(&mut [][..]),
+        tcp::SocketBuffer::new(&mut [][..]),
     );
-    assert_eq!(plain, b);
-    assert!(request(&mut r, &c, 2, 2, sid, 1, &[], 2).is_none());
-    let mut wire = [0; PACKET];
-    let n = relay::encode(&c, 2, 2, sid, 2, &[], &mut wire).unwrap();
-    wire[n - 1] ^= 1;
-    assert!(r.handle(&wire[..n], 2, &mut plain).is_none());
-    assert!(request(&mut r, &c, 2, 2, sid, 2, &[], 2).is_some()); // forgery did not advance replay state
-    let mut wrong = c.clone();
-    wrong.id = 2;
-    assert!(request(&mut r, &wrong, 2, 2, sid, 3, &[], 3).is_none());
-    assert!(request(&mut r, &c, 2, 1, sid, 3, &b, 3).is_none()); // Bob cannot write Alice's slot
-    let mut changed = b;
-    changed[96] = 1;
-    assert!(request(&mut r, &c, 1, 1, sid, 2, &changed, 4).is_none());
-    assert!(request(&mut r, &c, 2, 2, sid, 3, &[], 5).is_none()); // conflicting slot is poisoned
-}
-#[test]
-fn relay_storage_expiry_and_canonical_field_encodings() {
-    let c = config();
-    let mut r = Relay::new(c.clone());
-    for n in 1..=4 {
-        let sid = [n; 16];
-        assert!(request(&mut r, &c, 1, 1, sid, n as u64, &body(&c, sid), 0).is_some());
-    }
-    assert!(request(&mut r, &c, 1, 1, [5; 16], 5, &body(&c, [5; 16]), 1).is_none());
-    assert!(
-        request(
-            &mut r,
-            &c,
-            1,
-            1,
-            [6; 16],
-            6,
-            &body(&c, [6; 16]),
-            SESSION_TICKS + 1
-        )
-        .is_some()
-    );
-    assert!(request(&mut r, &c, 2, 2, [1; 16], 1, &[], SESSION_TICKS + 2).is_none());
-    assert!(relay::decode_share(&[0; 63]).is_none());
-    let mut bad = [0; 64];
-    bad[..2].copy_from_slice(&257u16.to_le_bytes());
-    assert!(relay::decode_share(&bad).is_none());
-    assert!(
-        request(
-            &mut r,
-            &c,
-            1,
-            1,
-            [7; 16],
-            5,
-            &body(&c, [7; 16]),
-            SESSION_TICKS + 3
-        )
-        .is_none()
-    );
-}
-#[test]
-fn octave_scalar_adapter_matches_canonical_project() {
-    let mut count = 0;
-    for row in include_str!("data/octave-vectors.csv").lines().skip(1) {
-        let f: Vec<_> = row.split(',').collect();
-        assert_eq!(f.len(), 7);
-        let v: Vec<u64> = f[1..].iter().map(|s| s.parse().unwrap()).collect();
-        let got = match f[0] {
-            "share" => p::field_share(v[0], v[1], v[2], v[3], v[4]),
-            "reconstruct" => p::field_reconstruct(v[0], v[1], v[2], v[3], v[4]),
-            _ => panic!("bad vector"),
-        };
-        assert_eq!(got, v[5], "{row}");
-        count += 1;
-    }
-    assert_eq!(count, 18944);
-}
-#[test]
-fn octave_fault_tolerance_ambiguity_and_no_byte_truncation() {
-    let root = [42; 32];
-    let coins = [[1, 256, 99]; 32];
-    let mut slots: [Option<[u16; 32]>; 8] = [None; 8];
-    for (i, slot) in slots.iter_mut().enumerate() {
-        *slot = relay::decode_share(&relay::share(&root, &coins, (i + 1) as u8).unwrap());
-    }
-    let t = relay::transcript([1; 16], [2; 16], [3; 16]);
-    let proof = relay::confirmation(&root, &t, false);
-    assert_eq!(
-        relay::recover(&slots, |r| relay::confirms(r, &t, &proof, false)),
-        Some(root)
-    );
-    assert_eq!(relay::recover(&slots, |_| true), Some(root)); // repeated same value is not ambiguity
-    for slot in &mut slots[..3] {
-        for v in slot.as_mut().unwrap() {
-            *v = (*v + 1) % 257;
-        }
-    }
-    slots[7] = None;
-    assert_eq!(
-        relay::recover(&slots, |r| relay::confirms(r, &t, &proof, false)),
-        Some(root)
-    );
-    assert!(relay::recover(&slots, |_| true).is_none());
-    let nonbyte = [Some([256; 32]); 8];
-    let mut called = false;
-    assert!(
-        relay::recover(&nonbyte, |_| {
-            called = true;
-            true
-        })
-        .is_none()
-    );
-    assert!(!called);
-    slots[3..].fill(None);
-    assert!(relay::recover(&slots, |_| true).is_none());
+    assert_eq!(extra, Err(Error::Full));
 }

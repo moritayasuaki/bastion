@@ -136,9 +136,9 @@ pub fn kernel(path: &Path) -> Result<()> {
         "bastion_net_ipv4",
         "bastion_net_udp",
         "bastion_net_budget",
-        "bastion_relay_ingress",
-        "psiv_seal",
-        "psiv_open",
+        "bastion_net_tcp",
+        "bastion_net_port",
+        "bastion_net_payload",
     ];
     let missing: Vec<_> = required.iter().filter(|s| !defined.contains(**s)).collect();
     if !missing.is_empty() || !undefined.is_empty() {

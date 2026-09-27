@@ -5,11 +5,11 @@ An experimental x86-64 kernel for process resource limits and security boundarie
 
 Bastion boots directly under QEMU or a compatible hypervisor. It includes isolated
 ring-3 processes, timer preemption, capability checks, memory/CPU quotas, a bounded
-virtio UDP stack, and an eight-VM Octave/PSIV relay laboratory.
+virtio TCP/UDP stack with fixed socket buffers.
 
 **Research prototype:** no SSH, filesystem, dynamic executable loader, persistent
 state, or provider-specific IP configuration. The policy proofs do not constitute
-whole-kernel or cryptographic verification. See [security scope](docs/ARCHITECTURE.md).
+whole-kernel verification. See [security scope](docs/ARCHITECTURE.md).
 
 ## Build and run
 
@@ -34,14 +34,14 @@ git clone https://github.com/moritayasuaki/bastion.git
 cd bastion
 cargo xtask check         # proofs, conformance, Rust tests, formatting and lints
 cargo xtask build         # creates dist/bastion.iso
-cargo xtask relay-demo    # starts, tests, and stops eight local relay VMs
+cargo xtask network-test  # boots one VM and checks TCP and UDP
 ```
 
-The first build fetches a pinned Limine revision. The relay demo creates fresh
-private link keys and forwards UDP ports only on loopback. Alice and Bob are host
-clients; relay services run inside Bastion. It checks key recovery with three
-altered shares and one stopped relay, encrypted traffic, and replay/forgery rejection.
-BIOS guests use 64 MB each; UEFI guests use 128 MB. See the [network guide](docs/NETWORK.md).
+The first build fetches a pinned Limine revision. Network checks use loopback-only
+port forwards, 64 MB for BIOS and 128 MB for UEFI. The guest serves TCP and UDP echo
+on port 9000. See the [network guide](docs/NETWORK.md) for kernel API and limits,
+and the [userspace interface plan](docs/USERSPACE.md) for process-owned sockets,
+resource quotas, console and loader work. Socket syscalls are not implemented yet.
 
 For the embedded process-isolation boot tests:
 
@@ -59,21 +59,19 @@ supported in principle; [cloud hardware and networking remain untested](docs/DEP
 |---|---|
 | `src/`, `boot/` | Safe process/network core and x86-64 hardware adapter |
 | `proof/`, `policy/` | Lean policy and proofs, generated C, FFI, and provenance |
-| `crypto/` | Vendored PSIV portable C backend and Rust crypto adapter |
-| `tests/` | Integration tests, reference vectors, and optional Octave Lean bridge |
-| `tools/` | Build/check commands, integrity checks, and relay harness |
+| `tests/` | Integration tests and Lean reference vectors |
+| `tools/` | Build/check commands, integrity checks, and TCP/UDP harness |
 | `docs/` | Architecture, extraction, networking, deployment, and licenses |
 
 Generated policy and reference vectors are included so a normal build does not
-require another project checkout. Build caches, private relay modules, packet captures,
+require another project checkout. Build caches, packet captures,
 local reports, and boot images are excluded from Git.
 
 ## Verification and licensing
 
-The project checks 35 Lean policy theorems, 36 Rust tests, and conformance corpora
-covering 18,046 executable-policy cases, 1,254 abstract-model cases, and 18,944 Octave
-cases. Field arithmetic executes through Lean-generated C. The PSIV cipher is the
-existing handwritten portable C implementation; its integration is not formally proved.
+The project checks 35 Lean policy theorems, 32 Rust tests, and conformance corpora
+covering 16,716 executable-policy cases and 1,254 abstract-model cases. Network
+policy executes through Lean-generated C; TCP state and packet parsing use Rust.
 
 See [validation and reproduction](docs/VALIDATION.md), [Lean extraction](docs/EXTRACTION.md),
 and [contributing](CONTRIBUTING.md). Bastion's original code is [MIT licensed](LICENSE).

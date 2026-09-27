@@ -9,7 +9,6 @@ pub const MAX_CAPABILITIES: usize = 8;
 const _: () = assert!(MAX_PROCESSES == 8 && MAX_CAPABILITIES == 8);
 pub use bastion_policy as decisions;
 pub mod net;
-pub mod relay;
 
 /// Compatibility helpers backed by the C compiled from Bastion.Runtime.
 pub mod policy {

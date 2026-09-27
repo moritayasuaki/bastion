@@ -32,10 +32,9 @@ mod ffi {
         pub fn bastion_net_ipv4(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> u8;
         pub fn bastion_net_udp(a0: u64, a1: u64, a2: u64, a3: u64) -> u8;
         pub fn bastion_net_budget(a0: u64) -> u8;
-        pub fn bastion_relay_ingress(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> u8;
-        pub fn bastion_field_share(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> u64;
-        pub fn bastion_field_reconstruct(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> u64;
-        pub fn bastion_unique_step(a0: u64, a1: u64, a2: u64) -> u64;
+        pub fn bastion_net_tcp(a0: u64, a1: u64) -> u8;
+        pub fn bastion_net_port(a0: u64) -> u8;
+        pub fn bastion_net_payload(a0: u64) -> u8;
     }
 }
 #[inline]
@@ -194,22 +193,17 @@ pub fn net_budget(a0: u64) -> u8 {
     unsafe { ffi::bastion_net_budget(a0) }
 }
 #[inline]
-pub fn relay_ingress(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64, a5: u64) -> u8 {
+pub fn net_tcp(a0: u64, a1: u64) -> u8 {
     // SAFETY: the generated ABI accepts all values of these integer types.
-    unsafe { ffi::bastion_relay_ingress(a0, a1, a2, a3, a4, a5) }
+    unsafe { ffi::bastion_net_tcp(a0, a1) }
 }
 #[inline]
-pub fn field_share(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> u64 {
+pub fn net_port(a0: u64) -> u8 {
     // SAFETY: the generated ABI accepts all values of these integer types.
-    unsafe { ffi::bastion_field_share(a0, a1, a2, a3, a4) }
+    unsafe { ffi::bastion_net_port(a0) }
 }
 #[inline]
-pub fn field_reconstruct(a0: u64, a1: u64, a2: u64, a3: u64, a4: u64) -> u64 {
+pub fn net_payload(a0: u64) -> u8 {
     // SAFETY: the generated ABI accepts all values of these integer types.
-    unsafe { ffi::bastion_field_reconstruct(a0, a1, a2, a3, a4) }
-}
-#[inline]
-pub fn unique_step(a0: u64, a1: u64, a2: u64) -> u64 {
-    // SAFETY: the generated ABI accepts all values of these integer types.
-    unsafe { ffi::bastion_unique_step(a0, a1, a2) }
+    unsafe { ffi::bastion_net_payload(a0) }
 }

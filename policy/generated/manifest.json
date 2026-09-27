@@ -1,8 +1,8 @@
 {
   "lean_version": "4.32.1",
-  "source_sha256": "5da6221475505fc49376500e2ed1388b377e2de3867cf590c15ea3dd81f81840",
-  "full_c_sha256": "04add74b56e52d342503a089807371ba6ca55424638f4b68ecd64900ccab0caa",
-  "freestanding_c_sha256": "89f9c53c8cd9a48fc837aebc9628099b8ca275f0bcb0e39dfb379243129a2d61",
+  "source_sha256": "2e78c398299de25b5f7cb7e372fe86d99eedb2d828874c120a5bc7d06d6f583d",
+  "full_c_sha256": "438f676c2f992c59308c173bdcdfe2277e2bd46e887fc871141ffc58a6cf3dbf",
+  "freestanding_c_sha256": "04df301e4e4cdae66ec8a97ce4f2d6273ed66dd17446c3724983e405ff333556",
   "lean_header_sha256": "22eed50aa703c4403010fabc12a7231ffa34dc979bd59ca1bfbac13c29a1dad2",
   "exports": [
     "bastion_abi_version",
@@ -36,10 +36,9 @@
     "bastion_net_ipv4",
     "bastion_net_udp",
     "bastion_net_budget",
-    "bastion_relay_ingress",
-    "bastion_field_share",
-    "bastion_field_reconstruct",
-    "bastion_unique_step"
+    "bastion_net_tcp",
+    "bastion_net_port",
+    "bastion_net_payload"
   ],
   "reachable_functions": [
     "bastion_abi_version",
@@ -73,10 +72,9 @@
     "bastion_net_ipv4",
     "bastion_net_udp",
     "bastion_net_budget",
-    "bastion_relay_ingress",
-    "bastion_field_share",
-    "bastion_field_reconstruct",
-    "bastion_unique_step"
+    "bastion_net_tcp",
+    "bastion_net_port",
+    "bastion_net_payload"
   ],
   "scalar_primitives": [
     "lean_uint64_add",
@@ -87,19 +85,17 @@
     "lean_uint64_land",
     "lean_uint64_lor",
     "lean_uint64_mod",
-    "lean_uint64_mul",
     "lean_uint64_shift_left",
-    "lean_uint64_shift_right",
     "lean_uint64_sub"
   ],
   "removed": "Unreachable boxed wrappers and module initializers; retained bodies are unchanged.",
   "runtime": "Scalar primitives only; no allocation, reference counting, or module initialization.",
   "files_sha256": {
     "LEAN-LICENSE": "8b28515ffffc5c0fe2807d8ae3735b00b324d9b7ce807dd63ff6ac8922fbce7e",
-    "Runtime.full.c": "04add74b56e52d342503a089807371ba6ca55424638f4b68ecd64900ccab0caa",
-    "bindings.rs": "a26298423319f7f18dd3ce7aea85c100c57460c8c213c5d4c415da5f3b3a64e6",
-    "policy.c": "89f9c53c8cd9a48fc837aebc9628099b8ca275f0bcb0e39dfb379243129a2d61",
-    "policy.h": "2bfab3cc571b302e484c1d281637db680b33e80d49d9675ec0af8e91639bdf8a",
-    "scalars.h": "c3b8a1aa796073781921a9a888b8a1844f6adb964b6bc38325424fb85e84bf23"
+    "Runtime.full.c": "438f676c2f992c59308c173bdcdfe2277e2bd46e887fc871141ffc58a6cf3dbf",
+    "bindings.rs": "6e8bd2d4b7e314c99f5f7374c92d7ea0fda5717351c40bf6e5bb6e22d010705f",
+    "policy.c": "04df301e4e4cdae66ec8a97ce4f2d6273ed66dd17446c3724983e405ff333556",
+    "policy.h": "9b5175825aca4dc6437607514bc7986a35fc2ae32b32bb3f6ace5f489a349fb0",
+    "scalars.h": "048651552e2f59842e819f07ab2861f8d9994ec375c313251f793babbba057d6"
   }
 }

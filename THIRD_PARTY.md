@@ -35,13 +35,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The generated `policy/generated/scalars.h` retains selected, unmodified scalar functions from Lean 4.32.1 `include/lean/lean.h`. Copyright (c) 2019 Microsoft Corporation. All rights reserved. Original author: Leonardo de Moura. These functions are licensed under Apache-2.0. The full license is in `policy/generated/LEAN-LICENSE` and is also included at the root of each ISO as `LEAN-LICENSE`. The Lean compiler itself runs only on the build machine.
 
-## PSIV and target cryptography
+## Rust network stack
 
-The kernel includes the unmodified portable C implementation from the [PSIV project](https://github.com/moritayasuaki/psiv), portable backend snapshot 0.4.0. Copyright (c) 2026 PSIV-Lean contributors, MIT licensed. Its license and source hashes are under `crypto/vendor/psiv/`; a copy of the license is in `docs/licenses/PSIV-MIT.txt`. This is handwritten C, distinct from Bastion's Lean-generated policy.
-
-The target also includes RustCrypto `sha2` 0.10.9, `digest` 0.10.7, `block-buffer` 0.10.4, `crypto-common` 0.1.7, `generic-array` 0.14.7, `typenum` 1.20.1, `cfg-if` 1.0.5, and the target dependency `cpufeatures` 0.2.17. Scalar SHA-256 is forced for the kernel. MIT notices are copied under `docs/licenses/`; both ISO variants include that directory as `/licenses/`. The Cargo lockfiles record all dependencies.
-
-Octave's protocol parameters and executable reference follow the Octave project, SPEC v0.2. The optional validation bridge imports an explicitly supplied checkout; the Mathlib-dependent Octave project is not copied into the kernel. The scalar Lean arithmetic is a separate implementation checked against its vectors.
+The kernel links `smoltcp` 0.14.0 and `managed` 0.8.0 (0BSD), plus `heapless`
+0.9.3, `hash32` 0.3.1, `byteorder` 1.5.0, `stable_deref_trait` 1.2.1 and
+`bitflags` 1.3.2 (MIT option). Their license texts are copied under `docs/licenses/`
+and included in boot images at `/licenses/`. Default features, heap allocation,
+asynchronous runtimes and host networking are disabled for smoltcp. Cargo lockfiles
+record the versions and registry checksums. Lean proves selected admission policies;
+the network protocol stack remains part of the trusted Rust implementation.
 
 ## Rust host tooling
 

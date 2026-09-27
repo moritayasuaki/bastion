@@ -79,6 +79,10 @@ pub fn build(root: &Path, options: &Options) -> Result<()> {
     }
     audit::kernel(&kernel)?;
     let staging = work.join(if test { "iso-test" } else { "iso-release" });
+    // Rebuild staging so removed components/licenses cannot survive in a new ISO.
+    if staging.exists() {
+        fs::remove_dir_all(&staging)?;
+    }
     let boot = staging.join("boot");
     let config = boot.join("limine");
     let efi = staging.join("EFI/BOOT");

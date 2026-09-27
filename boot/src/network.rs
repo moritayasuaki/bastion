@@ -1,10 +1,12 @@
 //! Legacy/transitional virtio-net PCI driver. Single CPU, polling at PIT ticks.
 //! All DMA storage is static, supervisor-owned and physically contiguous.
-use crate::{Request, physical};
+use crate::physical;
 use bastion_core::{
     decisions,
-    net::{ECHO_PORT, MAX_FRAME, Stack},
-    relay::{Config, Relay},
+    net::{
+        self, DeviceCapabilities, ECHO_PORT, Instant, MAX_FRAME, MAX_PAYLOAD, Medium, RxToken,
+        SocketHandle, SocketStorage, Stack, TxToken, tcp, udp,
+    },
 };
 use core::{
     arch::asm,
@@ -21,10 +23,17 @@ static mut RXQ: QueueMem = QueueMem([0; 12288]);
 static mut TXQ: QueueMem = QueueMem([0; 12288]);
 static mut RX: Buffers = Buffers([[0; BUFFER]; MAXQ]);
 static mut TX: Buffers = Buffers([[0; BUFFER]; MAXQ]);
-static mut DEVICE: Option<Device> = None;
-#[used]
-#[unsafe(link_section = ".requests")]
-static mut MODULES: Request = Request::new(0x3e7e279702be32af, 0xca1c4f3bd1280cee);
+static mut DEVICE: Option<Driver> = None;
+static mut STACK: Option<Stack<'static>> = None;
+static mut HANDLES: Option<(SocketHandle, SocketHandle)> = None;
+static mut SOCKETS: [SocketStorage<'static>; 2] = [const { SocketStorage::EMPTY }; 2];
+static mut UDP_RX_META: [udp::PacketMetadata; 4] = [udp::PacketMetadata::EMPTY; 4];
+static mut UDP_TX_META: [udp::PacketMetadata; 4] = [udp::PacketMetadata::EMPTY; 4];
+static mut UDP_RX: [u8; MAX_PAYLOAD * 4] = [0; MAX_PAYLOAD * 4];
+static mut UDP_TX: [u8; MAX_PAYLOAD * 4] = [0; MAX_PAYLOAD * 4];
+static mut TCP_RX: [u8; 4096] = [0; 4096];
+static mut TCP_TX: [u8; 4096] = [0; 4096];
+
 struct Queue {
     mem: *mut u8,
     buffers: *mut u8,
@@ -34,15 +43,15 @@ struct Queue {
     avail: u16,
     posted: [bool; MAXQ],
 }
-struct Device {
+struct Driver {
     io: u16,
     rx: Queue,
     tx: Queue,
-    stack: Stack,
-    relay: Option<Relay>,
-    packets: u64,
-    drops: u64,
+    received: u64,
+    transmitted: u64,
+    failed: bool,
 }
+
 unsafe fn out16(port: u16, value: u16) {
     asm!("out dx, ax",in("dx")port,in("ax")value,options(nomem,nostack));
 }
@@ -160,28 +169,21 @@ impl Queue {
         Ok(Some((id, len)))
     }
 }
-unsafe fn config() -> Option<Config> {
-    let response = MODULES.response;
-    if response.is_null() || *response.add(1) != 1 {
+// TCP initial sequence numbers need a fresh seed. Refuse networking if the
+// virtual CPU cannot provide hardware randomness; never fall back to a constant.
+unsafe fn random_seed() -> Option<u64> {
+    if core::arch::x86_64::__cpuid(1).ecx & (1 << 30) == 0 {
         return None;
     }
-    let files = *response.add(2) as *const *const u64;
-    if files.is_null() {
-        return None;
+    for _ in 0..32 {
+        let value: u64;
+        let ok: u8;
+        asm!("rdrand {}", "setc {}", out(reg) value, out(reg_byte) ok, options(nomem, nostack));
+        if ok != 0 {
+            return Some(value);
+        }
     }
-    let file = *files;
-    if file.is_null() {
-        return None;
-    }
-    let size = *file.add(2);
-    if size != bastion_core::relay::CONFIG_SIZE as u64 {
-        return None;
-    }
-    let data = *file.add(1) as *const u8;
-    if data.is_null() {
-        return None;
-    }
-    Config::decode(core::slice::from_raw_parts(data, size as usize))
+    None
 }
 pub unsafe fn init() {
     let Some(io) = find() else {
@@ -223,103 +225,195 @@ pub unsafe fn init() {
     for id in 0..rx.n {
         rx.post(id, BUFFER, true);
     }
-    let configuration = config();
-    if let Some(c) = &configuration {
-        crate::console::print(format_args!(
-            "OCTAVE RELAY {} / AUTHENTICATED PSIV LINKS\n",
-            c.id
-        ));
-    }
-    DEVICE = Some(Device {
+    let Some(seed) = random_seed() else {
+        crate::out(io + 18, 0x83);
+        crate::console::print(format_args!("NETWORK: RANDOM SEED UNAVAILABLE\n"));
+        return;
+    };
+    let mut driver = Driver {
         io,
         rx,
         tx,
-        stack: Stack {
-            mac,
-            ip: [10, 0, 2, 15],
-        },
-        relay: configuration.map(Relay::new),
-        packets: 0,
-        drops: 0,
-    });
+        received: 0,
+        transmitted: 0,
+        failed: false,
+    };
+    let mut stack = Stack::new(&mut driver, mac, [10, 0, 2, 15], seed, &mut SOCKETS[..]).unwrap();
+    stack.gateway([10, 0, 2, 2]).unwrap();
+    let udp = stack
+        .add_udp(
+            udp::PacketBuffer::new(&mut UDP_RX_META[..], &mut UDP_RX[..]),
+            udp::PacketBuffer::new(&mut UDP_TX_META[..], &mut UDP_TX[..]),
+        )
+        .unwrap();
+    let tcp = stack
+        .add_tcp(
+            tcp::SocketBuffer::new(&mut TCP_RX[..]),
+            tcp::SocketBuffer::new(&mut TCP_TX[..]),
+        )
+        .unwrap();
+    stack.udp_bind(udp, ECHO_PORT).unwrap();
+    stack.tcp_listen(tcp, ECHO_PORT).unwrap();
+    HANDLES = Some((udp, tcp));
+    STACK = Some(stack);
+    DEVICE = Some(driver);
     crate::out(io + 18, 7);
     out16(io + 16, 0);
-    crate::console::print(format_args!("UDP READY 10.0.2.15:9000 / RELAY PORT 9001\n"));
+    crate::console::print(format_args!("TCP / UDP READY 10.0.2.15:9000\n"));
 }
 pub unsafe fn poll(now: u64) {
-    let Some(device) = DEVICE.as_mut() else {
+    let (Some(driver), Some(stack), Some((udp, tcp))) = (DEVICE.as_mut(), STACK.as_mut(), HANDLES)
+    else {
         return;
     };
-    if device.poll(now).is_err() {
-        crate::out(device.io + 18, 0);
+    driver.received = 0;
+    driver.transmitted = 0;
+    for _ in 0..driver.tx.n {
+        match driver.tx.take() {
+            Ok(Some(_)) => {}
+            Ok(None) => break,
+            Err(()) => {
+                driver.failed = true;
+                break;
+            }
+        }
+    }
+    let now = i64::try_from(now).unwrap_or(i64::MAX);
+    stack.poll(now, driver);
+    // Trusted echo services exercise the transport; no ring-3 socket ABI yet.
+    let mut buffer = [0; MAX_PAYLOAD];
+    for _ in 0..4 {
+        let Ok((n, remote)) = stack.udp_recv_from(udp, &mut buffer) else {
+            break;
+        };
+        let _ = stack.udp_send_to(udp, &buffer[..n], remote);
+    }
+    let socket = stack.tcp(tcp).unwrap();
+    if !socket.is_open() {
+        stack.tcp_listen(tcp, ECHO_PORT).unwrap();
+    } else {
+        // Consume no more bytes than can be queued for echo, preserving stream
+        // bytes under backpressure. FIN follows all buffered replies.
+        let space = socket.send_capacity() - socket.send_queue();
+        let n = buffer.len().min(space);
+        if socket.can_recv()
+            && n > 0
+            && socket.may_send()
+            && let Ok(n) = socket.recv_slice(&mut buffer[..n])
+        {
+            assert_eq!(socket.send_slice(&buffer[..n]), Ok(n));
+        }
+        if socket.state() == tcp::State::CloseWait && !socket.can_recv() {
+            socket.close();
+        }
+    }
+    stack.poll(now, driver);
+    if driver.received > 0 {
+        out16(driver.io + 16, 0);
+    }
+    let _ = crate::input(driver.io + 19);
+    if driver.failed {
+        crate::out(driver.io + 18, 0);
         DEVICE = None;
         crate::console::print(format_args!(
             "NETWORK DISABLED: INVALID DEVICE COMPLETION\n"
         ));
     }
 }
-impl Device {
-    unsafe fn poll(&mut self, now: u64) -> Result<(), ()> {
-        for _ in 0..self.tx.n {
-            if self.tx.take()?.is_none() {
-                break;
+struct Receive {
+    bytes: [u8; MAX_FRAME],
+    len: usize,
+}
+impl RxToken for Receive {
+    fn consume<R, F: FnOnce(&[u8]) -> R>(self, f: F) -> R {
+        f(&self.bytes[..self.len])
+    }
+}
+struct Transmit<'a> {
+    driver: &'a mut Driver,
+    id: usize,
+}
+impl TxToken for Transmit<'_> {
+    fn consume<R, F: FnOnce(&mut [u8]) -> R>(self, len: usize, f: F) -> R {
+        let mut frame = [0; MAX_FRAME];
+        let result = f(&mut frame[..len]);
+        unsafe {
+            let target = self.driver.tx.buffers.add(self.id * BUFFER);
+            for i in 0..10 {
+                write(target.add(i), 0);
             }
+            for (i, b) in frame[..len].iter().enumerate() {
+                write(target.add(10 + i), *b);
+            }
+            self.driver.tx.post(self.id, len + 10, false);
+            fence(Ordering::SeqCst);
+            out16(self.driver.io + 16, 1);
         }
-        let mut consumed = 0;
-        while decisions::net_budget(consumed) != 0 {
-            let Some((id, len)) = self.rx.take()? else {
-                break;
-            };
-            consumed += 1;
-            let buffer = self.rx.buffers.add(id * BUFFER);
-            let mut frame = [0; MAX_FRAME];
-            let mut output = [0; MAX_FRAME];
-            if (24..=MAX_FRAME + 10).contains(&len) && read(buffer) == 0 && read(buffer.add(1)) == 0
-            {
-                for (i, b) in frame[..len - 10].iter_mut().enumerate() {
-                    *b = read(buffer.add(10 + i));
+        result
+    }
+}
+impl net::Device for Driver {
+    type RxToken<'a> = Receive;
+    type TxToken<'a> = Transmit<'a>;
+    fn capabilities(&self) -> DeviceCapabilities {
+        let mut caps = DeviceCapabilities::default();
+        caps.medium = Medium::Ethernet;
+        caps.max_transmission_unit = MAX_FRAME;
+        caps.max_burst_size = Some(8);
+        caps
+    }
+    fn receive(&mut self, _: Instant) -> Option<(Receive, Transmit<'_>)> {
+        if self.failed || decisions::net_budget(self.transmitted) == 0 {
+            return None;
+        }
+        let tx = self.tx.posted[..self.tx.n].iter().position(|busy| !*busy)?;
+        while decisions::net_budget(self.received) != 0 {
+            let completion = unsafe { self.rx.take() };
+            let (id, len) = match completion {
+                Ok(Some(v)) => v,
+                Ok(None) => return None,
+                Err(()) => {
+                    self.failed = true;
+                    return None;
                 }
-                let relay = &mut self.relay;
-                let response =
-                    self.stack
-                        .receive(&frame[..len - 10], &mut output, |port, input, out| {
-                            if port == ECHO_PORT {
-                                out[..input.len()].copy_from_slice(input);
-                                Some(input.len())
-                            } else {
-                                relay.as_mut()?.handle(input, now, out)
-                            }
-                        });
-                if let Some(n) = response {
-                    if let Some(tx) = self.tx.posted[..self.tx.n].iter().position(|busy| !*busy) {
-                        let target = self.tx.buffers.add(tx * BUFFER);
-                        for i in 0..10 {
-                            write(target.add(i), 0);
-                        }
-                        for (i, b) in output[..n].iter().enumerate() {
-                            write(target.add(10 + i), *b);
-                        }
-                        self.tx.post(tx, n + 10, false);
-                        fence(Ordering::SeqCst);
-                        out16(self.io + 16, 1);
-                        if output[12..14] == [8, 0] {
-                            self.packets = self.packets.saturating_add(1);
-                        }
-                        if self.packets == 1 && output[12..14] == [8, 0] {
-                            crate::console::print(format_args!("PASS UDP REQUEST / RESPONSE\n"));
-                        }
-                    } else {
-                        self.drops = self.drops.saturating_add(1);
+            };
+            self.received += 1;
+            let mut packet = Receive {
+                bytes: [0; MAX_FRAME],
+                len: 0,
+            };
+            unsafe {
+                let source = self.rx.buffers.add(id * BUFFER);
+                if (24..=MAX_FRAME + 10).contains(&len)
+                    && read(source) == 0
+                    && read(source.add(1)) == 0
+                {
+                    packet.len = len - 10;
+                    for (i, b) in packet.bytes[..packet.len].iter_mut().enumerate() {
+                        *b = read(source.add(10 + i));
                     }
                 }
+                self.rx.post(id, BUFFER, true);
             }
-            self.rx.post(id, BUFFER, true);
+            if packet.len > 0 {
+                self.transmitted += 1;
+                return Some((
+                    packet,
+                    Transmit {
+                        driver: self,
+                        id: tx,
+                    },
+                ));
+            }
         }
-        if consumed > 0 {
-            fence(Ordering::SeqCst);
-            out16(self.io + 16, 0);
+        None
+    }
+    fn transmit(&mut self, _: Instant) -> Option<Transmit<'_>> {
+        if self.failed || decisions::net_budget(self.transmitted) == 0 {
+            return None;
         }
-        let _ = crate::input(self.io + 19);
-        Ok(())
+        let id = self.tx.posted[..self.tx.n].iter().position(|busy| !*busy)?;
+        self.transmitted += 1;
+        Some(Transmit { driver: self, id })
     }
 }

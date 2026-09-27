@@ -18,7 +18,7 @@ flowchart TB
 
 The core is trusted kernel code, not a library exposed directly to an application. Methods such as `spawn`, `grant`, `reserve_pages`, `release_pages`, and `snapshot` are management interfaces callable only by the trusted loader or hardware adapter. Only `Kernel::syscall` is an untrusted policy entry point; it obtains the caller from `current`.
 
-All resource admission, account updates, identifier rules, capability predicates, scheduler selection, syscall-number validation, user-return sanitization, and final page permission values are implemented in `Bastion.Runtime`. Its 35 exports also cover packet bounds, relay ingress, GF(257) arithmetic, and candidate selection. Rust retains fixed arrays, traversal of stored entries, transaction ordering, and assignment of approved results. This split avoids a heap-dependent Lean object runtime in the kernel. The safe core calls a separate, narrow FFI crate. Details and compiler provenance are in [EXTRACTION.md](EXTRACTION.md).
+All resource admission, account updates, identifier rules, capability predicates, scheduler selection, syscall-number validation, user-return sanitization, and final page permission values are implemented in `Bastion.Runtime`. Its 34 exports also cover frame/IP/UDP/TCP bounds, ports, datagram limits, and bounded network polling. Rust retains fixed arrays, traversal of stored entries, transaction ordering, and assignment of approved results. This split avoids a heap-dependent Lean object runtime in the kernel. The safe core calls a separate, narrow FFI crate. Details and compiler provenance are in [EXTRACTION.md](EXTRACTION.md).
 
 ## Memory and process state
 
@@ -79,18 +79,24 @@ Errors return `u64::MAX`. The portable `Restrict` and `Close` calls are tested b
 | `other_owner_denied` | A capability from a different owner cannot authorize an operation |
 | `dead_target_denied` | A dead target cannot authorize an operation |
 
-These 11 abstract theorems remain in place. Another 24 theorems apply to the exact executable `UInt64`/`Bool` definitions supplied to the C compiler: reservation and charge refinement, accepted reservation bounds, rejection preserving prior state, release conservation, identifier exhaustion, rights restriction, wrong-owner/dead-target rejection, scheduler bounds and empty-mask behavior, safe user flags, supervisor mappings, read-only code, NX data, UDP bounds, fragment rejection, replay rejection, bounded polling, and candidate ambiguity transitions.
+These 11 abstract theorems remain in place. Another 24 theorems apply to the exact executable `UInt64`/`Bool` definitions supplied to the C compiler: reservation and charge refinement, accepted reservation bounds, rejection preserving prior state, release conservation, identifier exhaustion, rights restriction, wrong-owner/dead-target rejection, scheduler bounds and empty-mask behavior, safe user flags, supervisor mappings, read-only code, NX data, UDP bounds, fragment rejection, bounded polling, TCP header bounds, zero-port rejection, and outbound datagram limits.
 
-The total is 35 checked theorems with no admitted placeholders or custom axioms. The executable source uses machine words; refinement lemmas relate selected functions to the natural-number model. Tests compare linked C against 18,046 executions of the Lean runtime definitions, 1,254 executions of the abstract model, and 18,944 cases from canonical Octave. These comparisons do **not** verify the Lean/C compilers, extraction adapter, Rust process-table updates, field refinement, or x86 adapter. The core still trusts the adapter to report time and identity correctly.
+The total is 35 checked theorems with no admitted placeholders or custom axioms. The executable source uses machine words; refinement lemmas relate selected functions to the natural-number model. Tests compare linked C against 16,716 executions of the Lean runtime definitions, 1,254 executions of the abstract model. These comparisons do **not** verify the Lean/C compilers, extraction adapter, Rust process-table updates, or x86 adapter. The core still trusts the adapter to report time and identity correctly.
 
 ## Network boundary
 
-The UDP stack and relay service are trusted kernel components. They do not add user syscalls or give the embedded processes NIC access. The driver uses supervisor-owned static DMA buffers, checks completion IDs and lengths, and processes at most eight received frames per timer interrupt. Malformed device completion disables the NIC. There is no IOMMU protection against a hostile hypervisor/device. Cryptographic work is bounded but increases kernel interrupt latency; it is not charged to separate service process quotas. See [NETWORK.md](NETWORK.md) for the transport, authentication, storage limits, and remaining isolation work.
+The TCP/UDP stack and echo services are trusted kernel components. They do not add
+user syscalls or give embedded processes NIC access. The driver uses static
+supervisor DMA buffers, validates completions, and handles at most eight receive
+completions and eight transmit-token reservations per timer interrupt. Invalid
+completions disable the NIC. There is no IOMMU boundary against a hostile device.
+Network work is not yet charged to a process quota. See [NETWORK.md](NETWORK.md)
+and the proposed [userspace interface](USERSPACE.md).
 
 ## Threat model and current limits
 
 The implemented boundary covers direct user accesses to kernel/other process memory, user code writes, data execution, forged or insufficient capabilities, and monopolizing the CPU through an infinite loop. It assumes a trusted boot image, bootloader, compiler, firmware, CPU, and cloud hypervisor.
 
-There is no claim of resistance to microarchitectural side channels, hostile DMA devices, compromised kernel code, hypervisor attacks, secure/measured boot attacks, or complete denial-of-service prevention. Virtio networking introduces DMA and a trusted C cipher boundary. There is no formal noninterference or scheduler fairness proof. Full fault-vector coverage, FPU/TLS state, provider hardware quirks, and malicious arbitrary application loading require further work before production use.
+There is no claim of resistance to microarchitectural side channels, hostile DMA devices, compromised kernel code, hypervisor attacks, secure/measured boot attacks, or complete denial-of-service prevention. Virtio networking introduces DMA and a trusted Rust protocol stack. There is no formal noninterference or scheduler fairness proof. Full fault-vector coverage, FPU/TLS state, provider hardware quirks, and malicious arbitrary application loading require further work before production use.
 
 Primary architecture references: [Intel system programming manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html), [Limine protocol](https://github.com/limine-bootloader/limine/blob/v8.x/PROTOCOL.md), and [seL4's capability introduction](https://docs.sel4.systems/Tutorials/capabilities.html). This implementation is independent of seL4 and inherits none of its verification claims.

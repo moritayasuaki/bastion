@@ -1,62 +1,49 @@
 # Validation
 
-Run the full source checks with:
+Run the complete source checks:
 
 ```sh
 cargo xtask check
 ```
 
-This checks 35 Lean theorems, compares freshly generated C with the committed
-artifacts, executes 36 Rust tests, and checks formatting and Clippy for the host
-workspace and bare-metal kernel. The policy object audit requires all 35 scalar
-exports, no undefined symbols, and no Lean heap runtime. The kernel audit requires
-critical process/network policy and PSIV symbols.
+This checks 35 Lean theorems, regenerates and compares the committed C artifacts,
+executes 32 Rust tests, and checks formatting and Clippy for host and bare-metal
+code. The policy object audit requires all 34 scalar exports and no undefined
+symbols or Lean heap runtime. The boot image links 32 policy symbols.
 
-## Reference corpora
-
-| Corpus | Cases | Checked against |
+| Corpus | Cases | Reference |
 |---|---:|---|
-| Executable policy | 18,046 | Lean runtime definitions across all 35 exports |
-| Abstract policy | 1,254 | Reservation and CPU-charge model |
-| Octave arithmetic | 18,944 | Independent Lean reference, all 70 four-subsets |
+| Executable policy | 16,716 | Lean runtime definitions across all 34 exports |
+| Abstract policy | 1,254 | Natural-number resource/capability model |
 
-The reference files live in `tests/data/`; they are required test inputs, not runtime
-logs. [Their provenance](../tests/data/README.md) describes regeneration. The external
-Octave checkout is needed only to regenerate its corpus, not for ordinary builds/tests.
+The five network tests cover two virtual Ethernet peers: UDP boundaries, truncation,
+full queues, checksums, unbound ports, TCP active/passive open, a dropped data segment
+and retransmission, a held receive window, partial streams, half-close and reconnect,
+malformed headers, every truncation of a valid minimum TCP frame, and socket capacity.
+These are integration tests, not exhaustive protocol verification.
 
-## Boot and network checks
+## Native boot and traffic
 
 ```sh
 cargo xtask build --test
 cargo xtask smoke --memory 64M
 cargo xtask smoke --machine q35
 cargo xtask build
-cargo xtask relay-demo
+cargo xtask network-test
 ```
 
-For UEFI, supply matching OVMF code/variable files through `--uefi PATH` and
-`--uefi-vars PATH` to `smoke` or `relay-demo`. Paths vary by host; the network guide
-includes an example. GitHub CI runs the Linux build, source checks, BIOS/UEFI boot
-checks, and the relay laboratory.
+Add `--uefi CODE --uefi-vars VARS` to `smoke` or `network-test` for UEFI.
+See [NETWORK.md](NETWORK.md) for firmware examples. CI runs the same source checks,
+BIOS/UEFI isolation tests and TCP/UDP traffic tests on Ubuntu 24.04.
 
-The local test matrix passed BIOS `pc` at 64 MB, BIOS `q35` at 128 MB, and UEFI `q35`
-at 128 MB. Eight-guest network checks passed BIOS at 64 MB and UEFI at 128 MB per
-guest. A 64 MB UEFI relay boot exhausted the bootloader allocator, so the harness
-uses 128 MB in that configuration. The recorded development toolchain was Rust
-1.98.1, Lean 4.32.1, QEMU 11.1.1/TCG, and xorriso 1.5.8.pl02.
+Boot tests verify private process pages, forbidden kernel access, read-only code,
+non-executable data, forged capability rejection, page quotas, CPU throttling,
+preemption and surviving processes after faults. Network checks use real host
+TCP/UDP sockets against the native guest. They cover 525 UDP exchanges, payloads
+0–1200 bytes and oversize rejection, three TCP connections with streams up to
+65,536 bytes, and FIN with pending data followed by EOF.
 
-The boot checks exercise page quotas, private backing pages, forged capabilities,
-kernel-memory access, code writes, NX data, CPU exhaustion, and timer preemption.
-Two unaffected processes must continue after the attacking processes terminate.
-
-Network checks cover payload sizes 0–1200, 520 consecutive descriptor-ring reuses,
-all-eight relay delivery, three altered shares plus one stopped VM, mutual PSIV
-confirmation, encrypted traffic in both directions, replay rejection, and a valid
-retry after a forged tag. The three-share fault is injected by the host harness,
-not by a complete Byzantine relay implementation. SIGTERM cleanup was also tested.
-
-Fresh relay logs/captures are written to `target/bastion/relay-lab/`. They and private
-key-bearing temporary images are not distributed as repository content.
-
-These are targeted tests. No cloud-provider, physical-hardware, SMP, whole-kernel,
-constant-time, Rust/Lean equivalence, or concrete cryptographic-reduction claim is made.
+Use 64 MB for BIOS and 128 MB for UEFI. The recorded development toolchain is Rust
+1.98.1, Lean 4.32.1, QEMU 11.1.1 and xorriso 1.5.8.pl02 on macOS. No public VPS has
+been validated. Test logs stay in ignored `target/bastion/`; generated images and
+local validation evidence are not public source artifacts.

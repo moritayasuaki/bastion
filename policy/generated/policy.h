@@ -30,9 +30,8 @@ uint64_t bastion_user_page_entry(uint64_t v_physical_418_, uint64_t v_kind_419_)
 uint64_t bastion_syscall_opcode(uint64_t v_raw_440_);
 uint8_t bastion_net_frame_len(uint64_t v_size_448_);
 uint8_t bastion_net_ipv4(uint64_t v_size_457_, uint64_t v_available_458_, uint64_t v_fragment_459_, uint64_t v_ttl_460_, uint64_t v_protocol_461_, uint64_t v_version_462_);
-uint8_t bastion_net_udp(uint64_t v_size_497_, uint64_t v_available_498_, uint64_t v_destination_499_, uint64_t v_bound_500_);
-uint8_t bastion_net_budget(uint64_t v_processed_523_);
-uint8_t bastion_relay_ingress(uint64_t v_relay_530_, uint64_t v_role_531_, uint64_t v_opcode_532_, uint64_t v_sequence_533_, uint64_t v_previous_534_, uint64_t v_size_535_);
-uint64_t bastion_field_share(uint64_t v_secret_580_, uint64_t v_a_581_, uint64_t v_b_582_, uint64_t v_c_583_, uint64_t v_x_584_);
-uint64_t bastion_field_reconstruct(uint64_t v_points_721_, uint64_t v_y0_722_, uint64_t v_y1_723_, uint64_t v_y2_724_, uint64_t v_y3_725_);
-uint64_t bastion_unique_step(uint64_t v_state_957_, uint64_t v_equal_958_, uint64_t v_confirmed_959_);
+uint8_t bastion_net_udp(uint64_t v_size_499_, uint64_t v_available_500_, uint64_t v_destination_501_, uint64_t v_bound_502_);
+uint8_t bastion_net_budget(uint64_t v_processed_525_);
+uint8_t bastion_net_tcp(uint64_t v_size_532_, uint64_t v_header_533_);
+uint8_t bastion_net_port(uint64_t v_port_549_);
+uint8_t bastion_net_payload(uint64_t v_size_558_);

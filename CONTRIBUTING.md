@@ -1,10 +1,10 @@
 # Contributing
 
 Keep changes small enough to review and explain the behavior being changed.
-Include a relevant regression test for changes to isolation, parsing, or authentication.
+Include a relevant regression test for changes to isolation, parsing, or transport.
 
 Run `cargo xtask check`. For kernel/driver changes, also build and run the boot tests;
-for network changes, run the relay demo. See [validation](docs/VALIDATION.md).
+for network changes, run `cargo xtask network-test`. See [validation](docs/VALIDATION.md).
 
 After changing executable Lean policy:
 
@@ -18,10 +18,10 @@ Review Lean source, generated C/bindings, provenance, and vectors together. Do n
 edit generated policy by hand or introduce admitted proofs/custom axioms. Keep the
 freestanding scalar ABI explicit; unsupported runtime dependencies must fail extraction.
 
-Preserve Octave's fixed k=4, n=8, t=3, f=1 profile, canonical field encoding, and
-unique-value acceptance. Keep PSIV's 32-byte key, 12-byte nonce, and 16-byte tag.
-Do not present conditional security assumptions or test agreement as a complete proof.
+Keep network buffers and work bounded, preserve TCP stream bytes under backpressure,
+and test malformed inputs and retransmission. Do not expose kernel socket handles
+to userspace. Keep policy proofs distinct from protocol and hardware test coverage.
 
-Never commit credentials, private relay modules, captures, build caches, or local
+Never commit credentials, captures, build caches, or local
 reports. Third-party source changes must retain licensing and update provenance.
 Contributions to original project code are under the repository's MIT license.

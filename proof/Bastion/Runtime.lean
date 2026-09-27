@@ -147,8 +147,8 @@ def netFrameLen (size : UInt64) : Bool := 14 ≤ size && size ≤ 1514
 
 @[export bastion_net_ipv4]
 def netIpv4 (size available fragment ttl protocol version : UInt64) : Bool :=
-  version == 0x45 && protocol == 17 && ttl > 0 && ttl ≤ 255 &&
-  (fragment == 0 || fragment == 0x4000) && 28 ≤ size && size ≤ available && size ≤ 1228
+  version == 0x45 && (protocol == 17 || protocol == 6) && ttl > 0 && ttl ≤ 255 &&
+  (fragment == 0 || fragment == 0x4000) && 20 ≤ size && size ≤ available && size ≤ 1500
 
 @[export bastion_net_udp]
 def netUdp (size available destination bound : UInt64) : Bool :=
@@ -158,51 +158,15 @@ def netUdp (size available destination bound : UInt64) : Bool :=
 @[export bastion_net_budget]
 def netBudget (processed : UInt64) : Bool := processed < 8
 
-@[export bastion_relay_ingress]
-def relayIngress (relay role opcode sequence previous size : UInt64) : Bool :=
-  1 ≤ relay && relay ≤ 8 && (role == 1 || role == 2) &&
-  previous < sequence && sequence < 1048576 &&
-  ((role == 1 && opcode == 1 && size == 176) ||
-   (role == 2 && opcode == 2 && size == 0))
+@[export bastion_net_tcp]
+def netTcp (size header : UInt64) : Bool :=
+  20 ≤ header && header ≤ 60 && header ≤ size && size ≤ 1480
 
--- Scalar adapter of Octave's GF(257) cubic and four-point interpolation.
--- Values outside the canonical representation are rejected, never reduced on ingress.
-@[export bastion_field_share]
-def fieldShare (secret a b c x : UInt64) : UInt64 :=
-  if secret > 255 || a > 256 || b > 256 || c > 256 || x < 1 || x > 8 then 257 else
-  (((c * x + b) % 257 * x + a) % 257 * x + secret) % 257
+-- Trusted socket setup and datagram sends share the same bounded policy.
+@[export bastion_net_port]
+def netPort (port : UInt64) : Bool := port > 0 && port ≤ 65535
 
-@[inline] def fieldInv (x : UInt64) : UInt64 :=
-  let a := x % 257
-  let b := a*a % 257
-  let c := b*b % 257
-  let d := c*c % 257
-  let e := d*d % 257
-  let f := e*e % 257
-  let g := f*f % 257
-  let h := g*g % 257
-  ((((((a*b % 257)*c % 257)*d % 257)*e % 257)*f % 257)*g % 257)*h % 257
-
-@[inline] def weight (x a b c : UInt64) : UInt64 :=
-  let numerator := ((257-a)*(257-b) % 257)*(257-c) % 257
-  let denominator := ((x+257-a)*(x+257-b) % 257)*(x+257-c) % 257
-  numerator * fieldInv denominator % 257
-
-@[export bastion_field_reconstruct]
-def fieldReconstruct (points y0 y1 y2 y3 : UInt64) : UInt64 :=
-  let a := points &&& 255
-  let b := (points >>> 8) &&& 255
-  let c := (points >>> 16) &&& 255
-  let d := (points >>> 24) &&& 255
-  if points > 0xffffffff || a < 1 || d > 8 || !(a < b && b < c && c < d) ||
-     y0 > 256 || y1 > 256 || y2 > 256 || y3 > 256 then 257 else
-  (y0 * weight a b c d + y1 * weight b a c d +
-   y2 * weight c a b d + y3 * weight d a b c) % 257
-
--- 0 = no confirmed value, 1 = one value, 2 = ambiguity/failure (absorbing).
-@[export bastion_unique_step]
-def uniqueStep (state equal confirmed : UInt64) : UInt64 :=
-  if state ≥ 2 then 2 else if confirmed != 1 then state else
-  if state == 0 || equal == 1 then 1 else 2
+@[export bastion_net_payload]
+def netPayload (size : UInt64) : Bool := size ≤ 1200
 
 end Bastion.Runtime

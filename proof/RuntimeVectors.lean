@@ -73,13 +73,10 @@ def main : IO Unit := do
       emit "net_udp" [a,b,9001,9000] (truth (netUdp a b 9001 9000))
       for f in [0,0x4000,0x2000,1,0x8000] do
         emit "net_ipv4" [a,b,f,64,17,0x45] (truth (netIpv4 a b f 64 17 0x45))
-    for r in [0,1,2,8,9] do
-      for role in [0,1,2,3] do
-        for (op, size) in [(1,176),(1,175),(2,0),(2,176)] do
-          emit "relay_ingress" [r,role,op,a,8,size] (truth (relayIngress r role op a 8 size))
-    for state in [0,1,2,3] do
-      for equal in [0,1] do emit "unique_step" [state,equal,a] (uniqueStep state equal a)
-    for x in [0,1,4,8,9] do
-      emit "field_share" [a,256,31,0,x] (fieldShare a 256 31 0 x)
-    emit "field_reconstruct" [0x04030201,a,a,a,a] (fieldReconstruct 0x04030201 a a a a)
-    emit "field_reconstruct" [a,0,1,2,3] (fieldReconstruct a 0 1 2 3)
+    emit "net_port" [a] (truth (netPort a))
+    emit "net_payload" [a] (truth (netPayload a))
+    for header in [0,19,20,24,60,61,1480,18446744073709551615] do
+      emit "net_tcp" [a,header] (truth (netTcp a header))
+    for proto in [0,1,6,17,255] do
+      for version in [0,0x45,0x46] do
+        emit "net_ipv4" [a,1500,0,64,proto,version] (truth (netIpv4 a 1500 0 64 proto version))

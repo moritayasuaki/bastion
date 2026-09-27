@@ -9,9 +9,7 @@ use std::{
     process::Command,
 };
 
-const PRIMITIVES: [&str; 12] = [
-    "lean_uint64_mul",
-    "lean_uint64_shift_right",
+const PRIMITIVES: [&str; 10] = [
     "lean_uint64_add",
     "lean_uint64_sub",
     "lean_uint64_div",
